@@ -1,0 +1,760 @@
+{% extends "base.html" %}
+
+{% block title %}Match Results - SkillSense{% endblock %}
+
+{% block extra_css %}
+<style>
+    .score-circle {
+        width: 250px;
+        height: 250px;
+        margin: 0 auto;
+        position: relative;
+    }
+    
+    .score-circle svg {
+        transform: rotate(-90deg);
+    }
+    
+    .score-text {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        text-align: center;
+    }
+    
+    .score-number {
+        font-size: 4rem;
+        font-weight: 700;
+        background: var(--gradient);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        line-height: 1;
+    }
+    
+    .score-label {
+        color: #666;
+        font-size: 1rem;
+        text-transform: uppercase;
+        letter-spacing: 2px;
+    }
+    
+    .match-badge {
+        display: inline-block;
+        padding: 10px 30px;
+        border-radius: 50px;
+        font-weight: 600;
+        font-size: 1.2rem;
+        margin-bottom: 30px;
+    }
+    
+    .match-badge.excellent {
+        background: #d4edda;
+        color: #155724;
+        border: 2px solid #28a745;
+    }
+    
+    .match-badge.good {
+        background: #fff3cd;
+        color: #856404;
+        border: 2px solid #ffc107;
+    }
+    
+    .match-badge.fair {
+        background: #fff3cd;
+        color: #856404;
+        border: 2px solid #ffc107;
+    }
+    
+    .match-badge.needs-improvement {
+        background: #f8d7da;
+        color: #721c24;
+        border: 2px solid #dc3545;
+    }
+    
+    .metric-card {
+        background: white;
+        border-radius: 15px;
+        padding: 25px;
+        text-align: center;
+        box-shadow: 0 5px 20px rgba(0,0,0,0.05);
+        height: 100%;
+        transition: all 0.3s ease;
+    }
+    
+    .metric-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 30px rgba(102, 126, 234, 0.2);
+    }
+    
+    .metric-value {
+        font-size: 2.5rem;
+        font-weight: 700;
+        color: #667eea;
+        margin-bottom: 5px;
+    }
+    
+    .metric-label {
+        color: #666;
+        font-size: 0.9rem;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+    }
+    
+    .metric-icon {
+        font-size: 2rem;
+        color: #667eea;
+        margin-bottom: 15px;
+    }
+    
+    .skills-container {
+        max-height: 400px;
+        overflow-y: auto;
+        padding-right: 10px;
+    }
+    
+    .skill-item {
+        display: flex;
+        align-items: center;
+        padding: 12px 15px;
+        background: #f8f9fa;
+        border-radius: 10px;
+        margin-bottom: 10px;
+        transition: all 0.3s ease;
+    }
+    
+    .skill-item:hover {
+        transform: translateX(5px);
+        box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+    }
+    
+    .skill-item.matched {
+        border-left: 4px solid #28a745;
+    }
+    
+    .skill-item.missing {
+        border-left: 4px solid #dc3545;
+    }
+    
+    .skill-icon {
+        width: 35px;
+        height: 35px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-right: 15px;
+    }
+    
+    .skill-icon.matched {
+        background: #d4edda;
+        color: #28a745;
+    }
+    
+    .skill-icon.missing {
+        background: #f8d7da;
+        color: #dc3545;
+    }
+    
+    .skill-info {
+        flex: 1;
+    }
+    
+    .skill-name {
+        font-weight: 600;
+        margin-bottom: 3px;
+    }
+    
+    .skill-category {
+        font-size: 0.8rem;
+        color: #666;
+    }
+    
+    .recommendation-card {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border-radius: 15px;
+        padding: 25px;
+        margin-top: 30px;
+    }
+    
+    .recommendation-list {
+        list-style: none;
+        padding: 0;
+    }
+    
+    .recommendation-list li {
+        padding: 10px 0;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        border-bottom: 1px solid rgba(255,255,255,0.2);
+    }
+    
+    .recommendation-list li:last-child {
+        border-bottom: none;
+    }
+    
+    .recommendation-list i {
+        font-size: 1.2rem;
+    }
+    
+    .share-buttons {
+        display: flex;
+        gap: 10px;
+        justify-content: center;
+        margin-top: 20px;
+    }
+    
+    .share-btn {
+        width: 45px;
+        height: 45px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        transition: all 0.3s ease;
+        cursor: pointer;
+    }
+    
+    .share-btn:hover {
+        transform: translateY(-3px);
+    }
+    
+    .share-btn.linkedin {
+        background: #0077b5;
+    }
+    
+    .share-btn.twitter {
+        background: #1da1f2;
+    }
+    
+    .share-btn.email {
+        background: #ea4335;
+    }
+    
+    .share-btn.download {
+        background: #34a853;
+    }
+    
+    .timeline-item {
+        position: relative;
+        padding-left: 40px;
+        margin-bottom: 25px;
+    }
+    
+    .timeline-item:before {
+        content: '';
+        position: absolute;
+        left: 12px;
+        top: 5px;
+        width: 16px;
+        height: 16px;
+        border-radius: 50%;
+        background: #667eea;
+        z-index: 1;
+    }
+    
+    .timeline-item:after {
+        content: '';
+        position: absolute;
+        left: 19px;
+        top: 25px;
+        width: 2px;
+        height: calc(100% + 5px);
+        background: #e9ecef;
+    }
+    
+    .timeline-item:last-child:after {
+        display: none;
+    }
+    
+    .timeline-title {
+        font-weight: 600;
+        margin-bottom: 5px;
+    }
+    
+    .timeline-content {
+        color: #666;
+        font-size: 0.95rem;
+    }
+    
+    @keyframes countUp {
+        from { opacity: 0; transform: translateY(20px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+    
+    .count-animation {
+        animation: countUp 0.5s ease forwards;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <h1 class="display-5 fw-bold text-white">Match Results</h1>
+                <p class="text-white-50">Detailed analysis of your resume against the job description</p>
+            </div>
+            <div>
+                <a href="{{ url_for('job_match') }}" class="btn btn-light btn-lg">
+                    <i class="fas fa-redo me-2"></i>
+                    New Match
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-lg-8">
+        <!-- Main Results Card -->
+        <div class="card mb-4">
+            <div class="card-body p-5">
+                <div class="text-center mb-4">
+                    <div class="match-badge {{ match_results.match_level|lower|replace(' ', '-') }}">
+                        <i class="fas fa-star me-2"></i>
+                        {{ match_results.match_level }}
+                    </div>
+                </div>
+                
+                <div class="row align-items-center">
+                    <div class="col-md-5">
+                        <div class="score-circle">
+                            <svg width="250" height="250">
+                                <circle cx="125" cy="125" r="110" fill="none" stroke="#e9ecef" stroke-width="15"/>
+                                <circle cx="125" cy="125" r="110" fill="none" stroke="#667eea" stroke-width="15" 
+                                        stroke-dasharray="{{ match_results.overall_score * 6.91 }}" 
+                                        stroke-dashoffset="0" stroke-linecap="round"/>
+                            </svg>
+                            <div class="score-text">
+                                <div class="score-number count-animation">{{ "%.1f"|format(match_results.overall_score) }}%</div>
+                                <div class="score-label">Overall Match</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-7">
+                        <h4 class="mb-3">{{ job_title }}</h4>
+                        <p class="text-muted mb-4">Job position analysis based on your qualifications</p>
+                        
+                        <div class="row g-3">
+                            <div class="col-6">
+                                <div class="metric-card">
+                                    <i class="fas fa-code metric-icon"></i>
+                                    <div class="metric-value">{{ "%.1f"|format(match_results.skill_match) }}%</div>
+                                    <div class="metric-label">Skills Match</div>
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <div class="metric-card">
+                                    <i class="fas fa-briefcase metric-icon"></i>
+                                    <div class="metric-value">{{ match_results.experience_match }}%</div>
+                                    <div class="metric-label">Experience</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Quick Stats -->
+                <div class="row mt-5 g-4">
+                    <div class="col-md-3 col-6">
+                        <div class="text-center">
+                            <div class="h3 mb-1">{{ match_results.matched_skills|length }}</div>
+                            <div class="text-muted small">Matched Skills</div>
+                        </div>
+                    </div>
+                    <div class="col-md-3 col-6">
+                        <div class="text-center">
+                            <div class="h3 mb-1">{{ match_results.missing_skills|length }}</div>
+                            <div class="text-muted small">Missing Skills</div>
+                        </div>
+                    </div>
+                    <div class="col-md-3 col-6">
+                        <div class="text-center">
+                            <div class="h3 mb-1">{{ match_results.resume_experience }} yrs</div>
+                            <div class="text-muted small">Your Experience</div>
+                        </div>
+                    </div>
+                    <div class="col-md-3 col-6">
+                        <div class="text-center">
+                            <div class="h3 mb-1">{{ match_results.required_experience }} yrs</div>
+                            <div class="text-muted small">Required</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Skills Analysis -->
+        <div class="card mb-4">
+            <div class="card-body p-4">
+                <h4 class="card-title mb-4">
+                    <i class="fas fa-brain text-primary me-2"></i>
+                    Skills Analysis
+                </h4>
+                
+                <ul class="nav nav-tabs mb-4" id="skillsTab" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active" id="matched-tab" data-bs-toggle="tab" data-bs-target="#matched" type="button" role="tab">
+                            <i class="fas fa-check-circle text-success me-2"></i>
+                            Matched Skills ({{ match_results.matched_skills|length }})
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="missing-tab" data-bs-toggle="tab" data-bs-target="#missing" type="button" role="tab">
+                            <i class="fas fa-times-circle text-danger me-2"></i>
+                            Missing Skills ({{ match_results.missing_skills|length }})
+                        </button>
+                    </li>
+                </ul>
+                
+                <div class="tab-content" id="skillsTabContent">
+                    <div class="tab-pane fade show active" id="matched" role="tabpanel">
+                        <div class="skills-container">
+                            {% if match_results.matched_skills %}
+                                {% for skill in match_results.matched_skills %}
+                                <div class="skill-item matched">
+                                    <div class="skill-icon matched">
+                                        <i class="fas fa-check"></i>
+                                    </div>
+                                    <div class="skill-info">
+                                        <div class="skill-name">{{ skill }}</div>
+                                        <div class="skill-category">Strength Area</div>
+                                    </div>
+                                    <span class="badge bg-success">Matched</span>
+                                </div>
+                                {% endfor %}
+                            {% else %}
+                                <p class="text-center text-muted py-4">No matching skills found</p>
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    <div class="tab-pane fade" id="missing" role="tabpanel">
+                        <div class="skills-container">
+                            {% if match_results.missing_skills %}
+                                {% for skill in match_results.missing_skills %}
+                                <div class="skill-item missing">
+                                    <div class="skill-icon missing">
+                                        <i class="fas fa-times"></i>
+                                    </div>
+                                    <div class="skill-info">
+                                        <div class="skill-name">{{ skill }}</div>
+                                        <div class="skill-category">Needs Improvement</div>
+                                    </div>
+                                    <span class="badge bg-danger">Missing</span>
+                                </div>
+                                {% endfor %}
+                            {% else %}
+                                <p class="text-center text-muted py-4">No missing skills - You're a perfect match!</p>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-4">
+        <!-- Recommendations Card -->
+        <div class="card mb-4">
+            <div class="card-body p-4">
+                <h4 class="card-title mb-4">
+                    <i class="fas fa-lightbulb text-warning me-2"></i>
+                    Recommendations
+                </h4>
+                
+                <div class="recommendation-card">
+                    <h5 class="mb-3">How to Improve</h5>
+                    <ul class="recommendation-list">
+                        {% if match_results.missing_skills %}
+                            <li>
+                                <i class="fas fa-graduation-cap"></i>
+                                Learn {{ match_results.missing_skills[:3]|join(', ') }}
+                            </li>
+                        {% endif %}
+                        
+                        {% if match_results.experience_match < 80 %}
+                            <li>
+                                <i class="fas fa-chart-line"></i>
+                                Highlight your {{ match_results.resume_experience }} years of experience more prominently
+                            </li>
+                        {% endif %}
+                        
+                        <li>
+                            <i class="fas fa-keyword"></i>
+                            Add keywords from job description to your resume
+                        </li>
+                        
+                        <li>
+                                                        <i class="fas fa-certificate"></i>
+                            Consider relevant certifications in your field
+                        </li>
+                        
+                        <li>
+                            <i class="fas fa-project-diagram"></i>
+                            Build projects showcasing missing skills
+                        </li>
+                    </ul>
+                </div>
+                
+                <!-- Learning Resources -->
+                <h5 class="mt-4 mb-3">Recommended Learning</h5>
+                <div class="list-group">
+                    {% if match_results.missing_skills %}
+                        {% for skill in match_results.missing_skills[:3] %}
+                        <a href="https://www.coursera.org/search?query={{ skill }}" target="_blank" class="list-group-item list-group-item-action d-flex align-items-center">
+                            <i class="fas fa-external-link-alt me-2 text-primary"></i>
+                            <span>{{ skill }} Courses on Coursera</span>
+                        </a>
+                        <a href="https://www.udemy.com/courses/search/?q={{ skill }}" target="_blank" class="list-group-item list-group-item-action d-flex align-items-center">
+                            <i class="fas fa-external-link-alt me-2 text-primary"></i>
+                            <span>{{ skill }} Courses on Udemy</span>
+                        </a>
+                        {% endfor %}
+                    {% else %}
+                        <p class="text-muted">You're all set! No missing skills to learn.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        
+        <!-- Timeline Card -->
+        <div class="card mb-4">
+            <div class="card-body p-4">
+                <h4 class="card-title mb-4">
+                    <i class="fas fa-clock text-primary me-2"></i>
+                    Action Timeline
+                </h4>
+                
+                <div class="timeline-item">
+                    <div class="timeline-title">Immediate (Week 1)</div>
+                    <div class="timeline-content">
+                        <ul class="list-unstyled">
+                            <li><i class="fas fa-check-circle text-success me-2"></i>Update resume with keywords</li>
+                            <li><i class="fas fa-check-circle text-success me-2"></i>Start learning missing skills</li>
+                        </ul>
+                    </div>
+                </div>
+                
+                <div class="timeline-item">
+                    <div class="timeline-title">Short-term (Week 2-4)</div>
+                    <div class="timeline-content">
+                        <ul class="list-unstyled">
+                            <li><i class="fas fa-clock text-warning me-2"></i>Complete online courses</li>
+                            <li><i class="fas fa-clock text-warning me-2"></i>Build portfolio projects</li>
+                        </ul>
+                    </div>
+                </div>
+                
+                <div class="timeline-item">
+                    <div class="timeline-title">Long-term (Month 2-3)</div>
+                    <div class="timeline-content">
+                        <ul class="list-unstyled">
+                            <li><i class="fas fa-calendar text-info me-2"></i>Get certified in key areas</li>
+                            <li><i class="fas fa-calendar text-info me-2"></i>Apply for positions</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Share Results -->
+        <div class="card">
+            <div class="card-body p-4">
+                <h4 class="card-title mb-3">
+                    <i class="fas fa-share-alt text-primary me-2"></i>
+                    Share Results
+                </h4>
+                
+                <div class="share-buttons">
+                    <div class="share-btn linkedin" onclick="shareOnLinkedIn()">
+                        <i class="fab fa-linkedin-in"></i>
+                    </div>
+                    <div class="share-btn twitter" onclick="shareOnTwitter()">
+                        <i class="fab fa-twitter"></i>
+                    </div>
+                    <div class="share-btn email" onclick="shareByEmail()">
+                        <i class="fas fa-envelope"></i>
+                    </div>
+                    <div class="share-btn download" onclick="downloadResults()">
+                        <i class="fas fa-download"></i>
+                    </div>
+                </div>
+                
+                <div class="mt-3 text-center">
+                    <small class="text-muted">Share your match results with recruiters</small>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Similar Jobs Section -->
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-body p-4">
+                <h4 class="card-title mb-4">
+                    <i class="fas fa-briefcase text-primary me-2"></i>
+                    Similar Job Opportunities
+                </h4>
+                
+                <div class="row">
+                    <div class="col-md-4 mb-3">
+                        <div class="card h-100 border-0 shadow-sm">
+                            <div class="card-body">
+                                <h5 class="card-title">{{ job_title }}</h5>
+                                <p class="text-muted small">Based on your match analysis</p>
+                                <div class="d-flex justify-content-between align-items-center mt-3">
+                                    <span class="badge bg-primary">Match: {{ "%.1f"|format(match_results.overall_score) }}%</span>
+                                    <a href="https://www.linkedin.com/jobs/search/?keywords={{ job_title }}" target="_blank" class="btn btn-sm btn-outline-primary">
+                                        View Jobs <i class="fas fa-arrow-right ms-1"></i>
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-4 mb-3">
+                        <div class="card h-100 border-0 shadow-sm">
+                            <div class="card-body">
+                                <h5 class="card-title">Senior {{ job_title }}</h5>
+                                <p class="text-muted small">Advanced positions</p>
+                                <div class="d-flex justify-content-between align-items-center mt-3">
+                                    <span class="badge bg-info">Experience: 5+ years</span>
+                                    <a href="https://www.linkedin.com/jobs/search/?keywords=senior%20{{ job_title }}" target="_blank" class="btn btn-sm btn-outline-primary">
+                                        View Jobs <i class="fas fa-arrow-right ms-1"></i>
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-4 mb-3">
+                        <div class="card h-100 border-0 shadow-sm">
+                            <div class="card-body">
+                                <h5 class="card-title">Remote {{ job_title }}</h5>
+                                <p class="text-muted small">Work from anywhere</p>
+                                <div class="d-flex justify-content-between align-items-center mt-3">
+                                    <span class="badge bg-success">Remote Available</span>
+                                    <a href="https://www.linkedin.com/jobs/search/?keywords={{ job_title }}&location=remote" target="_blank" class="btn btn-sm btn-outline-primary">
+                                        View Jobs <i class="fas fa-arrow-right ms-1"></i>
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Animate numbers on load
+document.addEventListener('DOMContentLoaded', function() {
+    const scoreNumber = document.querySelector('.score-number');
+    if (scoreNumber) {
+        const finalScore = parseFloat(scoreNumber.textContent);
+        animateValue(scoreNumber, 0, finalScore, 1000);
+    }
+});
+
+function animateValue(element, start, end, duration) {
+    let startTimestamp = null;
+    const step = (timestamp) => {
+        if (!startTimestamp) startTimestamp = timestamp;
+        const progress = Math.min((timestamp - startTimestamp) / duration, 1);
+        element.textContent = (progress * (end - start) + start).toFixed(1) + '%';
+        if (progress < 1) {
+            window.requestAnimationFrame(step);
+        }
+    };
+    window.requestAnimationFrame(step);
+}
+
+// Share functions
+function shareOnLinkedIn() {
+    const url = encodeURIComponent(window.location.href);
+    const title = encodeURIComponent(`My job match score: {{ "%.1f"|format(match_results.overall_score) }}% for {{ job_title }}`);
+    window.open(`https://www.linkedin.com/sharing/share-offsite/?url=${url}&title=${title}`, '_blank');
+}
+
+function shareOnTwitter() {
+    const text = encodeURIComponent(`Check out my job match score: {{ "%.1f"|format(match_results.overall_score) }}% for {{ job_title }} on SkillSense!`);
+    const url = encodeURIComponent(window.location.href);
+    window.open(`https://twitter.com/intent/tweet?text=${text}&url=${url}`, '_blank');
+}
+
+function shareByEmail() {
+    const subject = encodeURIComponent('My SkillSense Job Match Results');
+    const body = encodeURIComponent(`My match score for {{ job_title }} is {{ "%.1f"|format(match_results.overall_score) }}%.\n\nCheck it out: ${window.location.href}`);
+    window.location.href = `mailto:?subject=${subject}&body=${body}`;
+}
+
+function downloadResults() {
+    // Create results content
+    const content = `
+SKILLSENSE JOB MATCH REPORT
+===========================
+Job Title: {{ job_title }}
+Overall Match: {{ "%.1f"|format(match_results.overall_score) }}%
+Match Level: {{ match_results.match_level }}
+
+DETAILED BREAKDOWN
+------------------
+Skills Match: {{ "%.1f"|format(match_results.skill_match) }}%
+Experience Match: {{ match_results.experience_match }}%
+Your Experience: {{ match_results.resume_experience }} years
+Required Experience: {{ match_results.required_experience }} years
+
+MATCHED SKILLS
+--------------
+{% for skill in match_results.matched_skills %}- {{ skill }}
+{% endfor %}
+
+MISSING SKILLS
+--------------
+{% for skill in match_results.missing_skills %}- {{ skill }}
+{% endfor %}
+
+RECOMMENDATIONS
+---------------
+{% if match_results.missing_skills %}1. Learn: {{ match_results.missing_skills[:3]|join(', ') }}{% endif %}
+2. Update resume with job description keywords
+3. Highlight your {{ match_results.resume_experience }} years of experience
+4. Consider relevant certifications
+5. Build projects showcasing your skills
+
+Generated by SkillSense Enhanced v2.0
+    `;
+    
+    // Create download link
+    const blob = new Blob([content], { type: 'text/plain' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `job_match_report_${Date.now()}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
+}
+
+// Print functionality
+document.addEventListener('keydown', function(e) {
+    if (e.ctrlKey && e.key === 'p') {
+        e.preventDefault();
+        window.print();
+    }
+});
+</script>
+{% endblock %}

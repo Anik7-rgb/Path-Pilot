@@ -1,0 +1,559 @@
+{% extends "base.html" %}
+
+{% block title %}Job Match - SkillSense{% endblock %}
+
+{% block extra_css %}
+<style>
+    .upload-area {
+        border: 3px dashed #e9ecef;
+        border-radius: 20px;
+        padding: 40px;
+        text-align: center;
+        background: #f8f9fa;
+        transition: all 0.3s ease;
+        cursor: pointer;
+    }
+    
+    .upload-area:hover {
+        border-color: #667eea;
+        background: rgba(102, 126, 234, 0.05);
+    }
+    
+    .upload-area.dragover {
+        border-color: #667eea;
+        background: rgba(102, 126, 234, 0.1);
+    }
+    
+    .upload-icon {
+        font-size: 4rem;
+        color: #667eea;
+        margin-bottom: 20px;
+    }
+    
+    .upload-text {
+        color: #666;
+        margin-bottom: 10px;
+    }
+    
+    .upload-hint {
+        font-size: 0.9rem;
+        color: #999;
+    }
+    
+    .file-info {
+        background: #f8f9fa;
+        border-radius: 10px;
+        padding: 15px;
+        margin-top: 20px;
+        display: none;
+    }
+    
+    .file-info.active {
+        display: block;
+    }
+    
+    .feature-card {
+        background: white;
+        border-radius: 15px;
+        padding: 25px;
+        text-align: center;
+        box-shadow: 0 5px 20px rgba(0,0,0,0.05);
+        height: 100%;
+        transition: all 0.3s ease;
+    }
+    
+    .feature-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 30px rgba(102, 126, 234, 0.2);
+    }
+    
+    .feature-icon {
+        width: 70px;
+        height: 70px;
+        background: rgba(102, 126, 234, 0.1);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 20px;
+    }
+    
+    .feature-icon i {
+        font-size: 2rem;
+        color: #667eea;
+    }
+    
+    .feature-title {
+        font-weight: 600;
+        margin-bottom: 10px;
+        color: #333;
+    }
+    
+    .feature-description {
+        color: #666;
+        font-size: 0.9rem;
+        line-height: 1.6;
+    }
+    
+    .comparison-section {
+        background: white;
+        border-radius: 20px;
+        padding: 30px;
+        margin-top: 40px;
+    }
+    
+    .comparison-item {
+        display: flex;
+        align-items: center;
+        gap: 20px;
+        padding: 15px;
+        border-bottom: 1px solid #e9ecef;
+    }
+    
+    .comparison-item:last-child {
+        border-bottom: none;
+    }
+    
+    .comparison-icon {
+        width: 40px;
+        height: 40px;
+        background: rgba(102, 126, 234, 0.1);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    .comparison-icon i {
+        color: #667eea;
+    }
+    
+    .comparison-content {
+        flex: 1;
+    }
+    
+    .comparison-title {
+        font-weight: 600;
+        margin-bottom: 5px;
+        color: #333;
+    }
+    
+    .comparison-text {
+        color: #666;
+        font-size: 0.9rem;
+    }
+    
+    .loading-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(255,255,255,0.9);
+        display: none;
+        justify-content: center;
+        align-items: center;
+        z-index: 9999;
+        backdrop-filter: blur(5px);
+    }
+    
+    .loading-overlay.active {
+        display: flex;
+    }
+    
+    .loading-content {
+        text-align: center;
+    }
+    
+    .loading-content h3 {
+        margin-top: 20px;
+        color: #333;
+    }
+    
+    .file-preview {
+        background: #f8f9fa;
+        border-radius: 15px;
+        padding: 20px;
+        margin-top: 30px;
+    }
+    
+    .file-preview-item {
+        display: flex;
+        align-items: center;
+        gap: 15px;
+        padding: 10px;
+        background: white;
+        border-radius: 10px;
+        margin-bottom: 10px;
+    }
+    
+    .file-preview-item i {
+        font-size: 1.5rem;
+        color: #667eea;
+    }
+    
+    .file-preview-info {
+        flex: 1;
+    }
+    
+    .file-preview-name {
+        font-weight: 500;
+        margin-bottom: 3px;
+    }
+    
+    .file-preview-size {
+        font-size: 0.8rem;
+        color: #666;
+    }
+    
+    .file-preview-remove {
+        color: #dc3545;
+        cursor: pointer;
+        padding: 5px 10px;
+        border-radius: 5px;
+    }
+    
+    .file-preview-remove:hover {
+        background: #fee;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <h1 class="display-5 fw-bold text-white">Job Match Analyzer</h1>
+        <p class="text-white-50">Compare your resume with job descriptions using our advanced AI matching algorithm</p>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-body p-5">
+                <h3 class="card-title mb-4">
+                    <i class="fas fa-upload text-primary me-2"></i>
+                    Upload Documents
+                </h3>
+                
+                <form id="matchForm" method="POST" enctype="multipart/form-data">
+                    <div class="row">
+                        <!-- Resume Upload -->
+                        <div class="col-md-6 mb-4">
+                            <label class="form-label fw-bold mb-3">
+                                <i class="fas fa-file-alt text-primary me-2"></i>
+                                Your Resume
+                            </label>
+                            <div class="upload-area" id="resumeUpload">
+                                <input type="file" id="resume_file" name="resume_file" 
+                                       accept=".pdf,.doc,.docx,.txt" style="display: none;" required>
+                                <i class="fas fa-cloud-upload-alt upload-icon"></i>
+                                <div class="upload-text">Drag & drop your resume here</div>
+                                <div class="upload-hint">or click to browse</div>
+                                <div class="upload-hint mt-2">Supports PDF, DOC, DOCX, TXT (Max 16MB)</div>
+                            </div>
+                            <div class="file-preview" id="resumePreview" style="display: none;">
+                                <div class="file-preview-item">
+                                    <i class="fas fa-file-pdf"></i>
+                                    <div class="file-preview-info">
+                                        <div class="file-preview-name" id="resumeName"></div>
+                                        <div class="file-preview-size" id="resumeSize"></div>
+                                    </div>
+                                    <div class="file-preview-remove" onclick="removeFile('resume')">
+                                        <i class="fas fa-times"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Job Description Upload -->
+                        <div class="col-md-6 mb-4">
+                            <label class="form-label fw-bold mb-3">
+                                <i class="fas fa-briefcase text-primary me-2"></i>
+                                Job Description
+                            </label>
+                            <div class="upload-area" id="jobUpload">
+                                <input type="file" id="job_file" name="job_file" 
+                                       accept=".pdf,.doc,.docx,.txt" style="display: none;" required>
+                                <i class="fas fa-cloud-upload-alt upload-icon"></i>
+                                <div class="upload-text">Drag & drop job description here</div>
+                                <div class="upload-hint">or click to browse</div>
+                                <div class="upload-hint mt-2">Supports PDF, DOC, DOCX, TXT (Max 16MB)</div>
+                            </div>
+                            <div class="file-preview" id="jobPreview" style="display: none;">
+                                <div class="file-preview-item">
+                                    <i class="fas fa-file-pdf"></i>
+                                    <div class="file-preview-info">
+                                        <div class="file-preview-name" id="jobName"></div>
+                                        <div class="file-preview-size" id="jobSize"></div>
+                                    </div>
+                                    <div class="file-preview-remove" onclick="removeFile('job')">
+                                        <i class="fas fa-times"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="text-center mt-4">
+                        <button type="submit" class="btn btn-primary btn-lg px-5" id="analyzeBtn">
+                            <i class="fas fa-chart-line me-2"></i>
+                            Analyze Match
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+        
+        <!-- Features Section -->
+        <div class="row mt-4">
+            <div class="col-md-4">
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-brain"></i>
+                    </div>
+                    <h5 class="feature-title">AI-Powered Analysis</h5>
+                    <p class="feature-description">Advanced machine learning algorithms compare your skills with job requirements</p>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-percentage"></i>
+                    </div>
+                    <h5 class="feature-title">Match Score</h5>
+                    <p class="feature-description">Get detailed match percentage with skill-by-skill breakdown</p>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-lightbulb"></i>
+                    </div>
+                    <h5 class="feature-title">Smart Recommendations</h5>
+                    <p class="feature-description">Receive personalized suggestions to improve your match score</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- How It Works Sidebar -->
+    <div class="col-lg-4">
+        <div class="card">
+            <div class="card-body p-4">
+                <h4 class="card-title mb-4">
+                    <i class="fas fa-info-circle text-primary me-2"></i>
+                    How It Works
+                </h4>
+                
+                <div class="timeline-item">
+                    <h6 class="fw-bold mb-2">1. Upload Documents</h6>
+                    <p class="text-muted small">Upload your resume and the job description you want to match against</p>
+                </div>
+                
+                <div class="timeline-item">
+                    <h6 class="fw-bold mb-2">2. AI Analysis</h6>
+                    <p class="text-muted small">Our algorithm extracts skills, experience, and requirements from both documents</p>
+                </div>
+                
+                <div class="timeline-item">
+                    <h6 class="fw-bold mb-2">3. Match Calculation</h6>
+                    <p class="text-muted small">We calculate your match score based on skills (70%) and experience (30%)</p>
+                </div>
+                
+                <div class="timeline-item">
+                    <h6 class="fw-bold mb-2">4. Get Insights</h6>
+                    <p class="text-muted small">Receive detailed breakdown and recommendations for improvement</p>
+                </div>
+                
+                <hr class="my-4">
+                
+                <div class="bg-light p-3 rounded">
+                    <h6 class="fw-bold mb-3">Match Score Breakdown</h6>
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between mb-2">
+                            <span>Skills Match</span>
+                            <span class="fw-bold">70%</span>
+                        </div>
+                        <div class="progress">
+                            <div class="progress-bar" style="width: 70%"></div>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between mb-2">
+                            <span>Experience Match</span>
+                            <span class="fw-bold">30%</span>
+                        </div>
+                        <div class="progress">
+                            <div class="progress-bar" style="width: 30%"></div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="mt-4">
+                    <div class="d-flex align-items-center">
+                        <i class="fas fa-shield-alt text-primary fa-2x me-3"></i>
+                        <div>
+                            <h6 class="fw-bold mb-1">Privacy Protected</h6>
+                            <p class="text-muted small mb-0">Your documents are processed securely and never shared</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Quick Stats -->
+        <div class="card mt-4">
+            <div class="card-body p-4">
+                <h5 class="card-title mb-3">
+                    <i class="fas fa-chart-bar text-primary me-2"></i>
+                    Platform Stats
+                </h5>
+                <div class="row text-center">
+                    <div class="col-6 mb-3">
+                        <div class="stat-number">10k+</div>
+                        <div class="stat-label">Matches Made</div>
+                    </div>
+                    <div class="col-6 mb-3">
+                        <div class="stat-number">95%</div>
+                        <div class="stat-label">Accuracy</div>
+                    </div>
+                    <div class="col-6">
+                        <div class="stat-number">500+</div>
+                        <div class="stat-label">Job Roles</div>
+                    </div>
+                    <div class="col-6">
+                        <div class="stat-number">1k+</div>
+                        <div class="stat-label">Skills</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Loading Overlay -->
+<div class="loading-overlay" id="loadingOverlay">
+    <div class="loading-content">
+        <div class="loading-spinner"></div>
+        <h3 class="mt-4">Analyzing Your Documents</h3>
+        <p class="text-muted">This may take a few seconds...</p>
+        <div class="progress mt-3" style="width: 300px;">
+            <div class="progress-bar progress-bar-striped progress-bar-animated" style="width: 100%"></div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// File upload handling
+document.querySelectorAll('.upload-area').forEach(area => {
+    const input = area.querySelector('input[type="file"]');
+    
+    area.addEventListener('click', () => {
+        input.click();
+    });
+    
+    area.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        area.classList.add('dragover');
+    });
+    
+    area.addEventListener('dragleave', () => {
+        area.classList.remove('dragover');
+    });
+    
+    area.addEventListener('drop', (e) => {
+        e.preventDefault();
+        area.classList.remove('dragover');
+        const files = e.dataTransfer.files;
+        if (files.length) {
+            input.files = files;
+            updateFilePreview(input);
+        }
+    });
+    
+    input.addEventListener('change', () => {
+        updateFilePreview(input);
+    });
+});
+
+function updateFilePreview(input) {
+    const file = input.files[0];
+    if (!file) return;
+    
+    const isResume = input.id === 'resume_file';
+    const previewDiv = isResume ? document.getElementById('resumePreview') : document.getElementById('jobPreview');
+    const nameSpan = isResume ? document.getElementById('resumeName') : document.getElementById('jobName');
+    const sizeSpan = isResume ? document.getElementById('resumeSize') : document.getElementById('jobSize');
+    
+    nameSpan.textContent = file.name;
+    sizeSpan.textContent = formatFileSize(file.size);
+    previewDiv.style.display = 'block';
+    
+    // Update icon based on file type
+    const icon = previewDiv.querySelector('i');
+    if (file.name.endsWith('.pdf')) {
+        icon.className = 'fas fa-file-pdf text-danger';
+    } else if (file.name.endsWith('.doc') || file.name.endsWith('.docx')) {
+        icon.className = 'fas fa-file-word text-primary';
+    } else {
+        icon.className = 'fas fa-file-alt text-info';
+    }
+}
+
+function formatFileSize(bytes) {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+}
+
+function removeFile(type) {
+    const input = document.getElementById(type === 'resume' ? 'resume_file' : 'job_file');
+    const preview = document.getElementById(type === 'resume' ? 'resumePreview' : 'jobPreview');
+    
+    input.value = '';
+    preview.style.display = 'none';
+}
+
+// Form submission
+document.getElementById('matchForm').addEventListener('submit', function(e) {
+    const resumeFile = document.getElementById('resume_file').files[0];
+    const jobFile = document.getElementById('job_file').files[0];
+    
+    if (!resumeFile || !jobFile) {
+        e.preventDefault();
+        alert('Please upload both files');
+        return;
+    }
+    
+    document.getElementById('loadingOverlay').classList.add('active');
+});
+
+// File size validation
+function validateFileSize(file) {
+    const maxSize = 16 * 1024 * 1024; // 16MB
+    if (file.size > maxSize) {
+        alert('File size exceeds 16MB limit');
+        return false;
+    }
+    return true;
+}
+
+// Add file size validation to inputs
+document.getElementById('resume_file').addEventListener('change', function(e) {
+    if (this.files[0] && !validateFileSize(this.files[0])) {
+        this.value = '';
+    }
+});
+
+document.getElementById('job_file').addEventListener('change', function(e) {
+    if (this.files[0] && !validateFileSize(this.files[0])) {
+        this.value = '';
+    }
+});
+</script>
+{% endblock %}

@@ -1,0 +1,1201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Path Pilot | AI-Powered Career Platform</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+
+        /* Navbar Styles */
+        .navbar {
+            background: white;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+        }
+
+        .nav-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            font-size: 1.8rem;
+            font-weight: bold;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+        }
+
+        .nav-btn {
+            padding: 0.6rem 1.2rem;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .nav-btn:not(.logout-btn) {
+            color: #667eea;
+            background: #f0f3ff;
+        }
+
+        .nav-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.2);
+        }
+
+        .logout-btn {
+            background: #ff4757;
+            color: white;
+        }
+
+        /* Main Container */
+        .main-container {
+            max-width: 1400px;
+            margin: 2rem auto;
+            padding: 0 2rem;
+        }
+
+        /* Welcome Section */
+        .welcome-section {
+            background: white;
+            border-radius: 20px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+
+        .welcome-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+
+        .welcome-header h1 {
+            color: #333;
+            font-size: 2rem;
+        }
+
+        .welcome-header h1 span {
+            color: #667eea;
+        }
+
+        .date-badge {
+            background: #f0f3ff;
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            color: #667eea;
+            font-weight: 600;
+        }
+
+        .quick-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-top: 1.5rem;
+        }
+
+        .stat-item {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            padding: 1rem;
+            background: #f8f9fa;
+            border-radius: 10px;
+        }
+
+        .stat-icon {
+            width: 50px;
+            height: 50px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 1.5rem;
+        }
+
+        .stat-info h3 {
+            font-size: 1.5rem;
+            color: #333;
+            margin-bottom: 0.2rem;
+        }
+
+        .stat-info p {
+            color: #666;
+            font-size: 0.9rem;
+        }
+
+        /* Tabs */
+        .tabs-container {
+            background: white;
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            margin-bottom: 2rem;
+        }
+
+        .tabs-header {
+            display: flex;
+            border-bottom: 2px solid #f0f0f0;
+            background: #f8f9fa;
+        }
+
+        .tab-btn {
+            flex: 1;
+            padding: 1.2rem;
+            border: none;
+            background: none;
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #666;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .tab-btn i {
+            font-size: 1.2rem;
+        }
+
+        .tab-btn.active {
+            color: #667eea;
+            background: white;
+            border-bottom: 3px solid #667eea;
+        }
+
+        .tab-btn:hover:not(.active) {
+            background: #f0f3ff;
+            color: #667eea;
+        }
+
+        .tab-content {
+            padding: 2rem;
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        /* Upload Areas */
+        .upload-area {
+            border: 2px dashed #e1e5e9;
+            border-radius: 15px;
+            padding: 3rem;
+            text-align: center;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            background: #f8f9fa;
+        }
+
+        .upload-area:hover {
+            border-color: #667eea;
+            background: #f0f3ff;
+        }
+
+        .upload-icon {
+            font-size: 3rem;
+            color: #667eea;
+            margin-bottom: 1rem;
+        }
+
+        .upload-area h3 {
+            color: #333;
+            margin-bottom: 0.5rem;
+        }
+
+        .upload-area p {
+            color: #666;
+            margin-bottom: 1.5rem;
+        }
+
+        .file-input {
+            display: none;
+        }
+
+        .file-label {
+            display: inline-block;
+            padding: 0.8rem 2rem;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .file-label:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.3);
+        }
+
+        .file-name {
+            margin-top: 1rem;
+            color: #667eea;
+            font-weight: 500;
+        }
+
+        /* Two Column Grid for Job Match */
+        .two-column-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        .upload-box {
+            background: #f8f9fa;
+            border-radius: 15px;
+            padding: 2rem;
+            border: 2px dashed #e1e5e9;
+            transition: all 0.3s ease;
+        }
+
+        .upload-box:hover {
+            border-color: #667eea;
+            background: #f0f3ff;
+        }
+
+        .upload-box h3 {
+            text-align: center;
+            margin-bottom: 1.5rem;
+            color: #333;
+        }
+
+        /* Buttons */
+        .btn {
+            width: 100%;
+            padding: 1rem;
+            border: none;
+            border-radius: 10px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            text-decoration: none;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+        }
+
+        .btn-secondary {
+            background: white;
+            color: #667eea;
+            border: 2px solid #667eea;
+        }
+
+        .btn-secondary:hover {
+            background: #f0f3ff;
+            transform: translateY(-2px);
+        }
+
+        .btn-success {
+            background: #28a745;
+            color: white;
+        }
+
+        .btn-success:hover {
+            background: #218838;
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(40, 167, 69, 0.3);
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        /* Results Section */
+        .results-section {
+            background: white;
+            border-radius: 20px;
+            padding: 2rem;
+            margin-top: 2rem;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+
+        .filename-badge {
+            background: #f0f3ff;
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            color: #667eea;
+            font-weight: 600;
+            display: inline-block;
+            margin-bottom: 1rem;
+        }
+
+        .skills-container {
+            margin-bottom: 2rem;
+        }
+
+        .skills-title {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: #333;
+            margin-bottom: 1rem;
+        }
+
+        .skills-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .skill-tag {
+            padding: 0.5rem 1rem;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            font-weight: 500;
+        }
+
+        .roles-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .role-card {
+            background: #f8f9fa;
+            padding: 1.5rem;
+            border-radius: 10px;
+            border-left: 4px solid #667eea;
+        }
+
+        .role-name {
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 0.5rem;
+        }
+
+        .role-score {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 1rem;
+        }
+
+        .score-bar {
+            flex: 1;
+            height: 8px;
+            background: #e0e0e0;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .score-fill {
+            height: 100%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            width: 0%;
+            transition: width 1s ease;
+        }
+
+        .score-value {
+            font-weight: 600;
+            color: #667eea;
+        }
+
+        .job-list, .course-list {
+            list-style: none;
+        }
+
+        .job-item, .course-item {
+            padding: 1rem;
+            background: #f8f9fa;
+            border-radius: 8px;
+            margin-bottom: 0.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .job-link {
+            color: #667eea;
+            text-decoration: none;
+            font-weight: 500;
+        }
+
+        .job-link:hover {
+            text-decoration: underline;
+        }
+
+        .ai-response {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 2rem;
+            border-radius: 15px;
+            margin-top: 2rem;
+        }
+
+        /* Action Cards */
+        .action-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        .action-card {
+            background: #f8f9fa;
+            padding: 2rem;
+            border-radius: 15px;
+            border-left: 4px solid #667eea;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .action-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.2);
+        }
+
+        .action-icon {
+            font-size: 2.5rem;
+            color: #667eea;
+            margin-bottom: 1rem;
+        }
+
+        .action-card h3 {
+            color: #333;
+            margin-bottom: 0.5rem;
+        }
+
+        .action-card p {
+            color: #666;
+            margin-bottom: 1rem;
+        }
+
+        .action-link {
+            color: #667eea;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        /* Recent Uploads */
+        .recent-uploads {
+            margin-top: 2rem;
+        }
+
+        .upload-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem;
+            background: #f8f9fa;
+            border-radius: 8px;
+            margin-bottom: 0.5rem;
+            border-left: 4px solid #667eea;
+        }
+
+        /* Alerts */
+        .alert {
+            padding: 1rem;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+            font-size: 0.95rem;
+        }
+
+        .alert.error {
+            background: #fee;
+            border: 1px solid #fcc;
+            color: #c00;
+        }
+
+        .alert.success {
+            background: #efe;
+            border: 1px solid #cfc;
+            color: #0c0;
+        }
+
+        .alert.info {
+            background: #eef;
+            border: 1px solid #ccf;
+            color: #00c;
+        }
+
+        /* Loading Spinner */
+        .spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255,255,255,.3);
+            border-radius: 50%;
+            border-top-color: #fff;
+            animation: spin 1s ease-in-out infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Chat Widget */
+        .chat-widget {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 1000;
+        }
+
+        .chat-button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            cursor: pointer;
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+            font-size: 1.5rem;
+            transition: all 0.3s ease;
+        }
+
+        .chat-button:hover {
+            transform: scale(1.1);
+        }
+
+        .chat-box {
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            width: 350px;
+            display: none;
+            margin-bottom: 10px;
+        }
+
+        .chat-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 1rem;
+            border-radius: 15px 15px 0 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .chat-header button {
+            background: none;
+            border: none;
+            color: white;
+            cursor: pointer;
+            font-size: 1.2rem;
+        }
+
+        .chat-messages {
+            height: 300px;
+            overflow-y: auto;
+            padding: 1rem;
+            background: #f8f9fa;
+        }
+
+        .chat-input-area {
+            padding: 1rem;
+            background: white;
+            border-radius: 0 0 15px 15px;
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .chat-input {
+            flex: 1;
+            padding: 0.8rem;
+            border: 2px solid #e1e5e9;
+            border-radius: 8px;
+        }
+
+        .chat-send-btn {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 0.8rem 1.2rem;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .nav-container {
+                flex-direction: column;
+                gap: 1rem;
+            }
+            
+            .nav-links {
+                flex-wrap: wrap;
+                justify-content: center;
+            }
+            
+            .two-column-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .quick-stats {
+                grid-template-columns: 1fr;
+            }
+            
+            .welcome-header {
+                flex-direction: column;
+                text-align: center;
+                gap: 1rem;
+            }
+            
+            .chat-box {
+                width: 300px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation Bar -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="logo">
+                <i class="fas fa-brain"></i>
+                Path Pilot
+            </div>
+            <div class="nav-links">
+                <a href="{{ url_for('dashboard') }}" class="nav-btn">
+                    <i class="fas fa-tachometer-alt"></i> Dashboard
+                </a>
+                <a href="{{ url_for('profile') }}" class="nav-btn">
+                    <i class="fas fa-user"></i> Profile
+                </a>
+                <a href="{{ url_for('history') }}" class="nav-btn">
+                    <i class="fas fa-history"></i> History
+                </a>
+                <a href="{{ url_for('job_match') }}" class="nav-btn" style="background: #28a745; color: white;">
+                    <i class="fas fa-balance-scale"></i> Job Match
+                </a>
+                <a href="{{ url_for('logout') }}" class="nav-btn logout-btn">
+                    <i class="fas fa-sign-out-alt"></i> Logout
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="main-container">
+        <!-- Flash Messages -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert {{ category }}">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <!-- Welcome Section -->
+        <div class="welcome-section">
+            <div class="welcome-header">
+                <h1>Welcome back, <span>{{ user.full_name or user.username }}</span>!</h1>
+                <div class="date-badge" id="dateDisplay">
+                    <i class="far fa-calendar-alt"></i> <span></span>
+                </div>
+            </div>
+            
+            <div class="quick-stats">
+                <div class="stat-item">
+                    <div class="stat-icon">
+                        <i class="fas fa-file-alt"></i>
+                    </div>
+                    <div class="stat-info">
+                        <h3>{{ recent_uploads|length }}</h3>
+                        <p>Recent Analyses</p>
+                    </div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-icon">
+                        <i class="fas fa-brain"></i>
+                    </div>
+                    <div class="stat-info">
+                        <h3>AI Ready</h3>
+                        <p>Smart Analysis</p>
+                    </div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-icon">
+                        <i class="fas fa-chart-line"></i>
+                    </div>
+                    <div class="stat-info">
+                        <h3>Career</h3>
+                        <p>Growth Tools</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tabs Section -->
+        <div class="tabs-container">
+            <div class="tabs-header">
+                <button class="tab-btn active" onclick="showTab('resume-analysis', this)">
+                    <i class="fas fa-file-alt"></i> Resume Analysis
+                </button>
+                <button class="tab-btn" onclick="showTab('job-matching', this)">
+                    <i class="fas fa-balance-scale"></i> Job Matching
+                </button>
+                <button class="tab-btn" onclick="showTab('quick-actions', this)">
+                    <i class="fas fa-bolt"></i> Quick Actions
+                </button>
+            </div>
+
+            <!-- Resume Analysis Tab -->
+            <div id="resume-analysis" class="tab-content active">
+                <!-- Upload Form -->
+                <form action="{{ url_for('analyze') }}" method="post" enctype="multipart/form-data" id="resumeForm">
+                    <div class="upload-area" onclick="document.getElementById('resume_file').click()">
+                        <input type="file" id="resume_file" name="resume_file" class="file-input" accept=".pdf,.doc,.docx,.txt" required>
+                        <div class="upload-icon">
+                            <i class="fas fa-cloud-upload-alt"></i>
+                        </div>
+                        <h3>Upload Your Resume</h3>
+                        <p>Drag and drop or click to browse</p>
+                        <span class="file-label">Choose File</span>
+                        <div class="file-name" id="resume_file_name">No file chosen</div>
+                        <p style="font-size: 0.85rem; color: #999; margin-top: 1rem;">
+                            Supported: PDF, DOC, DOCX, TXT (Max 16MB)
+                        </p>
+                    </div>
+                    
+                    <div style="margin-top: 1rem;">
+                        <input type="text" name="custom_query" placeholder="Ask something specific about your career (optional)" 
+                               style="width: 100%; padding: 1rem; border: 2px solid #e1e5e9; border-radius: 10px; margin-bottom: 1rem;">
+                    </div>
+                    
+                    <button type="submit" class="btn btn-primary" id="analyzeBtn">
+                        <i class="fas fa-robot"></i> Analyze Resume
+                    </button>
+                </form>
+
+                <!-- Analysis Results -->
+                {% if show_results %}
+                <div class="results-section">
+                    <div class="filename-badge">
+                        <i class="fas fa-file"></i> {{ filename }}
+                    </div>
+
+                    <!-- Skills Section -->
+                    <div class="skills-container">
+                        <h3 class="skills-title">
+                            <i class="fas fa-code"></i> Extracted Skills
+                        </h3>
+                        <div class="skills-grid">
+                            {% for skill in skills %}
+                            <span class="skill-tag">{{ skill }}</span>
+                            {% endfor %}
+                        </div>
+                    </div>
+
+                    <!-- Top Roles -->
+                    <h3 class="skills-title">
+                        <i class="fas fa-briefcase"></i> Recommended Roles
+                    </h3>
+                    <div class="roles-grid">
+                        {% for role, score in top_roles %}
+                        <div class="role-card">
+                            <div class="role-name">{{ role }}</div>
+                            <div class="role-score">
+                                <div class="score-bar">
+                                    <div class="score-fill" style="width: {{ score }}%"></div>
+                                </div>
+                                <span class="score-value">{{ score }}%</span>
+                            </div>
+                            <a href="{{ url_for('job_match') }}?role={{ role }}" class="btn btn-secondary" style="width: auto; padding: 0.5rem 1rem; text-decoration: none;">
+                                <i class="fas fa-search"></i> Find Jobs
+                            </a>
+                        </div>
+                        {% endfor %}
+                    </div>
+
+                    <!-- Job Recommendations -->
+                    <h3 class="skills-title">
+                        <i class="fas fa-bullseye"></i> Job Recommendations
+                    </h3>
+                    <ul class="job-list">
+                        {% if jobs %}
+                            {% for job_title, job_url in jobs %}
+                            <li class="job-item">
+                                <span>
+                                    <i class="fas fa-briefcase"></i> {{ job_title }}
+                                </span>
+                                <a href="{{ job_url }}" target="_blank" class="job-link" rel="noopener noreferrer">
+                                    <i class="fas fa-external-link-alt"></i> View Jobs
+                                </a>
+                            </li>
+                            {% endfor %}
+                        {% else %}
+                            <li class="job-item">
+                                <span>No job recommendations available</span>
+                            </li>
+                        {% endif %}
+                    </ul>
+
+                    <!-- Course Recommendations -->
+                    <h3 class="skills-title">
+                        <i class="fas fa-graduation-cap"></i> Recommended Courses
+                    </h3>
+                    <ul class="course-list">
+                        {% for skill, course in courses %}
+                        <li class="job-item">
+                            <span><strong>{{ skill }}:</strong> {{ course }}</span>
+                            <a href="https://www.coursera.org/search?query={{ skill }}" target="_blank" class="job-link" rel="noopener noreferrer">
+                                Find Course <i class="fas fa-arrow-right"></i>
+                            </a>
+                        </li>
+                        {% else %}
+                        <li class="job-item">
+                            <span>No course recommendations available</span>
+                        </li>
+                        {% endfor %}
+                    </ul>
+
+                    <!-- AI Response -->
+                    {% if ai_response %}
+                    <div class="ai-response">
+                        <i class="fas fa-robot" style="font-size: 2rem; margin-bottom: 1rem;"></i>
+                        <p>{{ ai_response }}</p>
+                    </div>
+                    {% endif %}
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- Job Matching Tab -->
+            <div id="job-matching" class="tab-content">
+                <form action="{{ url_for('job_match') }}" method="post" enctype="multipart/form-data" id="jobMatchForm">
+                    <div class="two-column-grid">
+                        <!-- Resume Upload -->
+                        <div class="upload-box">
+                            <h3><i class="fas fa-file-alt"></i> Your Resume</h3>
+                            <div class="upload-area" style="padding: 2rem;" onclick="document.getElementById('match_resume_file').click()">
+                                <input type="file" id="match_resume_file" name="resume_file" class="file-input" accept=".pdf,.doc,.docx,.txt" required>
+                                <div class="upload-icon">
+                                    <i class="fas fa-cloud-upload-alt"></i>
+                                </div>
+                                <p>Click to upload your resume</p>
+                                <div class="file-name" id="match_resume_name">No file chosen</div>
+                            </div>
+                        </div>
+
+                        <!-- Job Description Upload -->
+                        <div class="upload-box">
+                            <h3><i class="fas fa-briefcase"></i> Job Description</h3>
+                            <div class="upload-area" style="padding: 2rem;" onclick="document.getElementById('job_file').click()">
+                                <input type="file" id="job_file" name="job_file" class="file-input" accept=".pdf,.doc,.docx,.txt" required>
+                                <div class="upload-icon">
+                                    <i class="fas fa-cloud-upload-alt"></i>
+                                </div>
+                                <p>Click to upload job description</p>
+                                <div class="file-name" id="job_file_name">No file chosen</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn btn-success" id="matchBtn">
+                        <i class="fas fa-calculator"></i> Calculate Match Percentage
+                    </button>
+                </form>
+
+                <!-- Quick Job Match Info -->
+                <div style="margin-top: 2rem; padding: 2rem; background: #f8f9fa; border-radius: 15px;">
+                    <h3 style="color: #333; margin-bottom: 1rem;">How Job Matching Works</h3>
+                    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; text-align: center;">
+                        <div>
+                            <i class="fas fa-file-alt" style="font-size: 2rem; color: #667eea; margin-bottom: 0.5rem;"></i>
+                            <h4>1. Upload Resume</h4>
+                            <p style="color: #666;">Upload your latest resume</p>
+                        </div>
+                        <div>
+                            <i class="fas fa-briefcase" style="font-size: 2rem; color: #667eea; margin-bottom: 0.5rem;"></i>
+                            <h4>2. Add Job Description</h4>
+                            <p style="color: #666;">Paste or upload job requirements</p>
+                        </div>
+                        <div>
+                            <i class="fas fa-chart-pie" style="font-size: 2rem; color: #667eea; margin-bottom: 0.5rem;"></i>
+                            <h4>3. Get Match Score</h4>
+                            <p style="color: #666;">See your compatibility percentage</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Quick Actions Tab -->
+            <div id="quick-actions" class="tab-content">
+                <div class="action-cards">
+                    <!-- Test Analysis Card -->
+                    <div class="action-card" onclick="window.location.href='{{ url_for('test_upload') }}'">
+                        <div class="action-icon">
+                            <i class="fas fa-flask"></i>
+                        </div>
+                        <h3>Test Analysis</h3>
+                        <p>Try a sample resume analysis to see how SkillSense works</p>
+                        <span class="action-link">Run Test <i class="fas fa-arrow-right"></i></span>
+                    </div>
+
+                    <!-- Job Match Card -->
+                    <div class="action-card" onclick="window.location.href='{{ url_for('job_match') }}'">
+                        <div class="action-icon">
+                            <i class="fas fa-balance-scale"></i>
+                        </div>
+                        <h3>Job Matching</h3>
+                        <p>Compare your resume with a job description</p>
+                        <span class="action-link">Start Matching <i class="fas fa-arrow-right"></i></span>
+                    </div>
+
+                    <!-- View History Card -->
+                    <div class="action-card" onclick="window.location.href='{{ url_for('history') }}'">
+                        <div class="action-icon">
+                            <i class="fas fa-history"></i>
+                        </div>
+                        <h3>View History</h3>
+                        <p>Check your previous analyses and matches</p>
+                        <span class="action-link">View All <i class="fas fa-arrow-right"></i></span>
+                    </div>
+                </div>
+
+                <!-- Recent Uploads -->
+                {% if recent_uploads %}
+                <div class="recent-uploads">
+                    <h3 style="color: #333; margin-bottom: 1rem;">Recent Uploads</h3>
+                    {% for upload in recent_uploads %}
+                    <div class="upload-item">
+                        <div>
+                            <strong>{{ upload.filename }}</strong>
+                            <div style="font-size: 0.9rem; color: #666;">
+                                <i class="far fa-clock"></i> {{ upload.upload_time[:16] if upload.upload_time else 'Recently' }}
+                            </div>
+                        </div>
+                        <a href="{{ url_for('view_upload', upload_id=upload.id) }}" class="btn btn-secondary" style="width: auto; padding: 0.5rem 1rem; text-decoration: none;">
+                            <i class="fas fa-eye"></i> View
+                        </a>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Chat Widget -->
+        <div class="chat-widget">
+            <div class="chat-box" id="chatBox">
+                <div class="chat-header">
+                    <span><i class="fas fa-robot"></i> Career Assistant</span>
+                    <button onclick="toggleChat()">✕</button>
+                </div>
+                <div class="chat-messages" id="chatMessages">
+                    <div style="background: white; padding: 0.8rem; border-radius: 10px; margin-bottom: 0.5rem;">
+                        Hello! I'm your career assistant. How can I help you today?
+                    </div>
+                </div>
+                <div class="chat-input-area">
+                    <input type="text" id="chatInput" class="chat-input" placeholder="Ask me anything...">
+                    <button class="chat-send-btn" onclick="sendMessage()">
+                        <i class="fas fa-paper-plane"></i>
+                    </button>
+                </div>
+            </div>
+            
+            <button class="chat-button" onclick="toggleChat()">
+                <i class="fas fa-comment"></i>
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // Display current date
+        function updateDate() {
+            const dateElement = document.querySelector('#dateDisplay span');
+            if (dateElement) {
+                const options = { year: 'numeric', month: 'long', day: 'numeric' };
+                const today = new Date().toLocaleDateString('en-US', options);
+                dateElement.textContent = today;
+            }
+        }
+        
+        // Call on page load
+        updateDate();
+
+        // Tab switching
+        function showTab(tabId, btnElement) {
+            // Hide all tabs
+            document.querySelectorAll('.tab-content').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            
+            // Remove active class from all buttons
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            
+            // Show selected tab
+            const selectedTab = document.getElementById(tabId);
+            selectedTab.classList.add('active');
+            
+            // Add active class to clicked button
+            if (btnElement) {
+                btnElement.classList.add('active');
+            }
+        }
+
+        // File name display for resume analysis
+        document.getElementById('resume_file')?.addEventListener('change', function(e) {
+            const fileName = e.target.files[0] ? e.target.files[0].name : 'No file chosen';
+            document.getElementById('resume_file_name').textContent = fileName;
+        });
+
+        // File name display for job match - resume
+        document.getElementById('match_resume_file')?.addEventListener('change', function(e) {
+            const fileName = e.target.files[0] ? e.target.files[0].name : 'No file chosen';
+            document.getElementById('match_resume_name').textContent = fileName;
+        });
+
+        // File name display for job match - job description
+        document.getElementById('job_file')?.addEventListener('change', function(e) {
+            const fileName = e.target.files[0] ? e.target.files[0].name : 'No file chosen';
+            document.getElementById('job_file_name').textContent = fileName;
+        });
+
+        // Form loading states
+        document.getElementById('resumeForm')?.addEventListener('submit', function(e) {
+            const btn = document.getElementById('analyzeBtn');
+            btn.innerHTML = '<span class="spinner"></span> Analyzing...';
+            btn.disabled = true;
+        });
+
+        document.getElementById('jobMatchForm')?.addEventListener('submit', function(e) {
+            const btn = document.getElementById('matchBtn');
+            btn.innerHTML = '<span class="spinner"></span> Calculating Match...';
+            btn.disabled = true;
+        });
+
+        // Chat functionality
+        function toggleChat() {
+            const chat = document.getElementById('chatBox');
+            if (chat) {
+                chat.style.display = chat.style.display === 'none' ? 'block' : 'none';
+            }
+        }
+
+        function sendMessage() {
+            const input = document.getElementById('chatInput');
+            const messages = document.getElementById('chatMessages');
+            
+            if (!input || !messages) return;
+            
+            const message = input.value.trim();
+            
+            if (!message) return;
+            
+            // Add user message
+            messages.innerHTML += `<div style="background: #667eea; color: white; padding: 0.8rem; border-radius: 10px; margin-bottom: 0.5rem; text-align: right; max-width: 80%; margin-left: auto;">${message}</div>`;
+            
+            // Clear input
+            input.value = '';
+            
+            // Scroll to bottom
+            messages.scrollTop = messages.scrollHeight;
+            
+            // Add typing indicator
+            messages.innerHTML += `<div id="typingIndicator" style="background: #e9ecef; padding: 0.8rem; border-radius: 10px; margin-bottom: 0.5rem; max-width: 80%;"><i class="fas fa-ellipsis-h"></i> Assistant is typing...</div>`;
+            messages.scrollTop = messages.scrollHeight;
+            
+            // Get AI response
+            fetch('/chat', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ message: message })
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                return response.json();
+            })
+            .then(data => {
+                // Remove typing indicator
+                const indicator = document.getElementById('typingIndicator');
+                if (indicator) indicator.remove();
+                
+                // Add response
+                messages.innerHTML += `<div style="background: white; padding: 0.8rem; border-radius: 10px; margin-bottom: 0.5rem; max-width: 80%; box-shadow: 0 2px 5px rgba(0,0,0,0.1);">${data.response}</div>`;
+                messages.scrollTop = messages.scrollHeight;
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                // Remove typing indicator
+                const indicator = document.getElementById('typingIndicator');
+                if (indicator) indicator.remove();
+                
+                messages.innerHTML += `<div style="background: #fee; color: #c00; padding: 0.8rem; border-radius: 10px; margin-bottom: 0.5rem; max-width: 80%;">Sorry, I encountered an error. Please try again.</div>`;
+            });
+        }
+
+        // Enter key in chat
+        document.getElementById('chatInput')?.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                sendMessage();
+            }
+        });
+
+        // Initialize chat box hidden
+        document.addEventListener('DOMContentLoaded', function() {
+            const chatBox = document.getElementById('chatBox');
+            if (chatBox) {
+                chatBox.style.display = 'none';
+            }
+        });
+    </script>
+</body>
+</html>

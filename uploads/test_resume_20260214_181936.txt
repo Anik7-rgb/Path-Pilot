@@ -1,0 +1,19 @@
+
+        JOHN DOE
+        Senior Software Engineer
+        
+        SKILLS:
+        - Python (Django, Flask, FastAPI)
+        - JavaScript (React, Node.js, TypeScript)
+        - AWS (EC2, S3, Lambda, RDS)
+        - Docker, Kubernetes, Jenkins
+        - MySQL, PostgreSQL, MongoDB
+        - Git, CI/CD, Agile/Scrum
+        
+        EXPERIENCE:
+        - Senior Developer at TechCorp (2020-Present)
+        - Full Stack Developer at Startup Inc (2018-2020)
+        
+        EDUCATION:
+        - BS Computer Science, University of Tech
+        

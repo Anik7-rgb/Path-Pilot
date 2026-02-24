@@ -1,0 +1,18 @@
+
+        JOHN DOE - Senior Software Engineer
+        Email: john.doe@email.com | Phone: (555) 123-4567
+        
+        SKILLS
+        • Programming: Python, JavaScript, Java, TypeScript
+        • Web Frameworks: Django, Flask, React, Node.js
+        • Databases: PostgreSQL, MongoDB, MySQL
+        • Cloud & DevOps: AWS, Docker, Kubernetes, Jenkins
+        • Tools: Git, JIRA, VS Code
+        
+        WORK EXPERIENCE
+        Senior Software Engineer | TechCorp Inc. | 2020 - Present
+        Full Stack Developer | Startup Innovations | 2018 - 2020
+        
+        EDUCATION
+        BS Computer Science | University of Technology | 2014 - 2018
+        

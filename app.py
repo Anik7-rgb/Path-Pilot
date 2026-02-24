@@ -13,22 +13,29 @@ from flask import Flask, request, render_template, jsonify, redirect, url_for, s
 import traceback
 import random
 import re
+import threading
+from concurrent.futures import ThreadPoolExecutor
 
-print("🚀 Starting Path Pilot Backend with Enhanced Processing...")
+print("🚀 Starting SkillSense Backend with Enhanced Processing...")
 
 # Configure logging
-logging.basicConfig(level=logging.WARNING, format='%(levelname)s: %(message)s')
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
 
 # Initialize Flask app
 app = Flask(__name__, template_folder='templates', static_folder='static')
 app.secret_key = 'skill-sense-secret-key-2024-change-in-production'
 app.config['SESSION_TYPE'] = 'filesystem'
+app.config['PERMANENT_SESSION_LIFETIME'] = 3600
 
 # Configure upload settings
-app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max file size
+app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
 app.config['UPLOAD_FOLDER'] = 'uploads'
 app.config['ALLOWED_EXTENSIONS'] = {'pdf', 'doc', 'docx', 'txt'}
 app.config['DATABASE'] = 'database.db'
+
+# Thread pool for parallel processing
+executor = ThreadPoolExecutor(max_workers=3)
 
 # Create necessary directories
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
@@ -36,63 +43,440 @@ os.makedirs('templates', exist_ok=True)
 os.makedirs('static/css', exist_ok=True)
 os.makedirs('static/js', exist_ok=True)
 
-# --------------------------
-# LM Studio Configuration (for optional AI enhancement)
-# --------------------------
-LM_BASE_URL = os.getenv("LM_STUDIO_BASE_URL", "http://localhost:1234/v1")
-CHATBOT_MODEL = os.getenv("CHATBOT_MODEL", "phi-3-mini-4k-instruct")
-CHATBOT_TIMEOUT = float(os.getenv("CHATBOT_TIMEOUT", "10"))
-COURSE_MODEL = os.getenv("COURSE_MODEL", "phi-3-mini-4k-instruct")
-COURSE_TIMEOUT = float(os.getenv("COURSE_TIMEOUT", "8"))
-LM_AVAILABLE = False
-
-# Check LM Studio availability
-try:
-    response = requests.get(f"{LM_BASE_URL}/models", timeout=2)
-    if response.status_code == 200:
-        LM_AVAILABLE = True
-        print("✅ LM Studio detected - AI enhancement available")
-    else:
-        print("⚠️ LM Studio not responding - using fallback mode")
-except:
-    print("⚠️ LM Studio not available - using fallback mode")
+# JSearch API Configuration
+JSEARCH_API_KEY = "d7c16a9efdmsh3f85b85a7b8ae51p14e8cfjsnfda220ee5c6f"
+JSEARCH_API_HOST = "jsearch.p.rapidapi.com"
+JSEARCH_API_URL = "https://jsearch.p.rapidapi.com/search"
 
 # --------------------------
-# ENHANCED SKILL DATABASE
+# COMPREHENSIVE SKILL DATABASE BY DEPARTMENT
 # --------------------------
-skill_categories = {
-    'Programming Languages': ['Python', 'JavaScript', 'Java', 'C++', 'C#', 'Go', 'Rust', 'PHP', 'Ruby', 'Swift', 'Kotlin', 'TypeScript', 'Scala', 'Perl', 'R'],
-    'Web Development': ['HTML', 'CSS', 'React', 'Angular', 'Vue.js', 'Node.js', 'Django', 'Flask', 'Spring', 'Express', 'jQuery', 'Bootstrap', 'Tailwind', 'SASS', 'Webpack'],
-    'Databases': ['MySQL', 'PostgreSQL', 'MongoDB', 'Redis', 'SQLite', 'Oracle', 'Cassandra', 'Elasticsearch', 'DynamoDB', 'Firebase', 'MariaDB', 'CouchDB'],
-    'Cloud & DevOps': ['AWS', 'Azure', 'GCP', 'Docker', 'Kubernetes', 'Terraform', 'Ansible', 'Jenkins', 'Git', 'CI/CD', 'GitHub Actions', 'GitLab CI', 'CircleCI', 'Prometheus', 'Grafana'],
-    'Data Science': ['Machine Learning', 'Deep Learning', 'Data Analysis', 'Pandas', 'NumPy', 'TensorFlow', 'PyTorch', 'Scikit-learn', 'Tableau', 'Power BI', 'Statistics', 'NLP', 'Computer Vision'],
-    'Soft Skills': ['Communication', 'Teamwork', 'Leadership', 'Problem Solving', 'Project Management', 'Agile', 'Scrum', 'Critical Thinking', 'Time Management', 'Adaptability', 'Creativity'],
-    'Certifications': ['AWS Certified', 'CISSP', 'PMP', 'Scrum Master', 'CEH', 'CompTIA', 'Cisco Certified', 'Azure Certified', 'Google Cloud Certified'],
-    'Tools': ['JIRA', 'Confluence', 'Slack', 'Trello', 'Asana', 'Figma', 'Adobe XD', 'Photoshop', 'VS Code', 'IntelliJ', 'Eclipse', 'Postman'],
-    'Mobile Development': ['iOS', 'Android', 'Swift', 'Kotlin', 'React Native', 'Flutter', 'Xamarin', 'Ionic'],
-    'Testing': ['Jest', 'Mocha', 'Selenium', 'Cypress', 'JUnit', 'PyTest', 'Unit Testing', 'Integration Testing']
+SKILL_DATABASE = {
+    # TECHNOLOGY SKILLS
+    'technology': {
+        'Programming Languages': [
+            'Python', 'Java', 'JavaScript', 'TypeScript', 'C++', 'C#', 'Ruby', 'PHP', 'Swift', 
+            'Kotlin', 'Go', 'Rust', 'Scala', 'Perl', 'R', 'MATLAB', 'Dart', 'Elixir', 'Haskell'
+        ],
+        'Web Development': [
+            'HTML', 'HTML5', 'CSS', 'CSS3', 'SASS', 'LESS', 'React', 'React.js', 'Angular', 
+            'Angular.js', 'Vue', 'Vue.js', 'Next.js', 'Nuxt.js', 'Node.js', 'Express.js', 
+            'Django', 'Flask', 'FastAPI', 'Spring', 'Spring Boot', 'ASP.NET', 'Laravel', 
+            'Ruby on Rails', 'jQuery', 'Bootstrap', 'Tailwind', 'Material UI', 'Redux', 
+            'Webpack', 'Babel', 'REST API', 'GraphQL', 'API Development'
+        ],
+        'Databases': [
+            'SQL', 'MySQL', 'PostgreSQL', 'MongoDB', 'Redis', 'Cassandra', 'Oracle', 
+            'SQL Server', 'SQLite', 'DynamoDB', 'Firebase', 'MariaDB', 'CouchDB', 'Elasticsearch',
+            'Database Design', 'Data Modeling', 'Query Optimization'
+        ],
+        'Cloud & DevOps': [
+            'AWS', 'Amazon Web Services', 'Azure', 'Google Cloud', 'GCP', 'Docker', 
+            'Kubernetes', 'Jenkins', 'GitHub Actions', 'GitLab CI', 'CircleCI', 'Terraform', 
+            'Ansible', 'Puppet', 'Chef', 'CloudFormation', 'CI/CD', 'DevOps', 'Linux', 
+            'Unix', 'Bash', 'Shell Scripting', 'Nginx', 'Apache', 'Infrastructure as Code'
+        ],
+        'Data Science & ML': [
+            'Machine Learning', 'Deep Learning', 'Neural Networks', 'NLP', 'Natural Language Processing',
+            'Computer Vision', 'TensorFlow', 'PyTorch', 'Keras', 'Scikit-learn', 'Pandas', 
+            'NumPy', 'SciPy', 'Matplotlib', 'Seaborn', 'Plotly', 'Jupyter', 'Data Analysis',
+            'Data Visualization', 'Statistics', 'Statistical Analysis', 'Feature Engineering',
+            'Model Deployment', 'MLOps', 'Big Data', 'Spark', 'Hadoop', 'Data Mining'
+        ],
+        'Mobile Development': [
+            'iOS', 'Android', 'Swift', 'Kotlin', 'React Native', 'Flutter', 'Xamarin', 
+            'Ionic', 'Mobile App Development', 'UI/UX for Mobile'
+        ],
+        'Testing': [
+            'Testing', 'Unit Testing', 'Integration Testing', 'Jest', 'Mocha', 'Chai',
+            'Selenium', 'Cypress', 'Puppeteer', 'JUnit', 'PyTest', 'QA', 'Quality Assurance',
+            'Test Automation', 'Manual Testing'
+        ],
+        'Tools & Methodologies': [
+            'Git', 'GitHub', 'GitLab', 'Bitbucket', 'JIRA', 'Confluence', 'Slack', 'Trello',
+            'Agile', 'Scrum', 'Kanban', 'Waterfall', 'Project Management', 'VS Code', 
+            'IntelliJ', 'Eclipse', 'Postman', 'Swagger', 'Figma', 'Adobe XD'
+        ],
+        'Security': [
+            'Cybersecurity', 'Network Security', 'Information Security', 'Encryption',
+            'Penetration Testing', 'Ethical Hacking', 'Security Auditing', 'CISSP',
+            'CompTIA Security+', 'Firewalls', 'SIEM', 'Incident Response'
+        ]
+    },
+    
+    # FINANCE SKILLS
+    'finance': {
+        'Financial Analysis': [
+            'Financial Analysis', 'Financial Modeling', 'Valuation', 'DCF', 'LBO', 'M&A',
+            'Financial Planning', 'Budgeting', 'Forecasting', 'Financial Reporting',
+            'Investment Analysis', 'Portfolio Management', 'Risk Management'
+        ],
+        'Accounting': [
+            'Accounting', 'Bookkeeping', 'GAAP', 'IFRS', 'Tax Preparation', 'Auditing',
+            'Accounts Payable', 'Accounts Receivable', 'General Ledger', 'Financial Statements',
+            'Balance Sheet', 'Income Statement', 'Cash Flow'
+        ],
+        'Investment': [
+            'Investment Banking', 'Private Equity', 'Venture Capital', 'Asset Management',
+            'Equity Research', 'Fixed Income', 'Derivatives', 'Trading', 'Hedge Funds',
+            'Wealth Management', 'Financial Advisory'
+        ],
+        'Financial Software': [
+            'Excel', 'Advanced Excel', 'VBA', 'Bloomberg Terminal', 'Reuters Eikon',
+            'QuickBooks', 'SAP FI', 'Oracle Financials', 'Peachtree', 'Tableau', 'Power BI'
+        ],
+        'Banking': [
+            'Commercial Banking', 'Retail Banking', 'Corporate Banking', 'Credit Analysis',
+            'Loan Processing', 'Mortgage', 'Wealth Management', 'Private Banking'
+        ],
+        'FinTech': [
+            'Blockchain', 'Cryptocurrency', 'Smart Contracts', 'Payments', 'Digital Banking',
+            'FinTech Regulations', 'Payment Gateways', 'Mobile Payments'
+        ]
+    },
+    
+    # MARKETING SKILLS
+    'marketing': {
+        'Digital Marketing': [
+            'SEO', 'Search Engine Optimization', 'SEM', 'Search Engine Marketing',
+            'PPC', 'Pay Per Click', 'Google Ads', 'Facebook Ads', 'Social Media Marketing',
+            'Content Marketing', 'Email Marketing', 'Marketing Automation'
+        ],
+        'Analytics': [
+            'Google Analytics', 'Data Analytics', 'Marketing Analytics', 'Conversion Rate Optimization',
+            'A/B Testing', 'Customer Analytics', 'Market Research', 'Competitive Analysis'
+        ],
+        'Brand Management': [
+            'Brand Strategy', 'Brand Management', 'Brand Development', 'Brand Identity',
+            'Marketing Strategy', 'Campaign Management', 'Product Marketing'
+        ],
+        'Content Creation': [
+            'Copywriting', 'Content Writing', 'Blogging', 'Technical Writing', 'Creative Writing',
+            'Video Production', 'Photography', 'Graphic Design', 'Adobe Creative Suite',
+            'Photoshop', 'Illustrator', 'InDesign', 'Canva'
+        ],
+        'Social Media': [
+            'Social Media Management', 'Community Management', 'Instagram', 'Facebook',
+            'Twitter', 'LinkedIn', 'TikTok', 'YouTube', 'Social Media Strategy'
+        ],
+        'PR & Communications': [
+            'Public Relations', 'Media Relations', 'Corporate Communications',
+            'Crisis Communication', 'Press Releases', 'Event Planning'
+        ]
+    },
+    
+    # HUMAN RESOURCES SKILLS
+    'hr': {
+        'Recruitment': [
+            'Recruiting', 'Talent Acquisition', 'Sourcing', 'Interviewing', 'Candidate Screening',
+            'Headhunting', 'Executive Search', 'Applicant Tracking Systems', 'Workday', 'Greenhouse'
+        ],
+        'HR Operations': [
+            'HR Management', 'HRIS', 'Employee Relations', 'Performance Management',
+            'Compensation & Benefits', 'Payroll', 'HR Policies', 'Compliance'
+        ],
+        'Training & Development': [
+            'Training', 'Learning & Development', 'Onboarding', 'Employee Training',
+            'Talent Management', 'Succession Planning', 'Coaching', 'Mentoring'
+        ],
+        'HR Strategy': [
+            'HR Strategy', 'Organizational Development', 'Workforce Planning',
+            'Change Management', 'Culture Building', 'Employee Engagement'
+        ],
+        'HR Compliance': [
+            'Labor Law', 'Employment Law', 'HR Compliance', 'EEO', 'OSHA',
+            'Workplace Safety', 'HR Auditing'
+        ]
+    },
+    
+    # SALES SKILLS
+    'sales': {
+        'Sales Techniques': [
+            'Sales', 'Business Development', 'Account Management', 'Lead Generation',
+            'Cold Calling', 'Negotiation', 'Closing', 'Upselling', 'Cross-selling'
+        ],
+        'Sales Management': [
+            'Sales Management', 'Sales Strategy', 'Sales Operations', 'Sales Forecasting',
+            'Territory Management', 'Team Leadership', 'Sales Training'
+        ],
+        'CRM': [
+            'Salesforce', 'HubSpot', 'Zoho CRM', 'Microsoft Dynamics', 'CRM Software',
+            'Customer Relationship Management'
+        ],
+        'B2B Sales': [
+            'B2B Sales', 'Enterprise Sales', 'Solution Selling', 'Consultative Selling',
+            'Strategic Partnerships', 'Channel Sales'
+        ],
+        'B2C Sales': [
+            'B2C Sales', 'Retail Sales', 'E-commerce', 'Direct Sales', 'Inside Sales'
+        ]
+    }
 }
 
-# Role requirements for ML prediction
-role_requirements = {
-    'Software Engineer': ['Python', 'JavaScript', 'Java', 'Git', 'SQL', 'Data Structures', 'Algorithms', 'OOP'],
-    'Data Scientist': ['Python', 'Machine Learning', 'Data Analysis', 'SQL', 'Statistics', 'Pandas', 'NumPy', 'Visualization'],
-    'DevOps Engineer': ['AWS', 'Docker', 'Kubernetes', 'Linux', 'CI/CD', 'Jenkins', 'Terraform', 'Ansible', 'Git'],
-    'Full Stack Developer': ['JavaScript', 'React', 'Node.js', 'HTML', 'CSS', 'SQL', 'REST APIs', 'Git'],
-    'Backend Developer': ['Python', 'Java', 'SQL', 'Django', 'Flask', 'API', 'Database Design', 'Microservices'],
-    'Frontend Developer': ['JavaScript', 'React', 'HTML', 'CSS', 'TypeScript', 'Responsive Design', 'UI/UX'],
-    'Machine Learning Engineer': ['Python', 'Machine Learning', 'TensorFlow', 'PyTorch', 'Statistics', 'Data Processing', 'Model Deployment'],
-    'Cloud Architect': ['AWS', 'Azure', 'Docker', 'Kubernetes', 'Networking', 'Security', 'Microservices', 'Cloud Design'],
-    'Product Manager': ['Project Management', 'Communication', 'Agile', 'Leadership', 'Analytics', 'User Research', 'Strategy'],
-    'UX/UI Designer': ['HTML', 'CSS', 'JavaScript', 'Design', 'Prototyping', 'User Research', 'Figma', 'Adobe XD'],
-    'Data Engineer': ['Python', 'SQL', 'ETL', 'Data Warehousing', 'Spark', 'Hadoop', 'Kafka', 'Airflow'],
-    'Security Engineer': ['Network Security', 'Encryption', 'Penetration Testing', 'Firewalls', 'SIEM', 'Incident Response'],
-    'QA Engineer': ['Testing', 'Selenium', 'Jest', 'Cypress', 'Automation', 'Bug Tracking', 'Test Planning'],
-    'Technical Lead': ['Architecture', 'Team Leadership', 'Code Review', 'Mentoring', 'Project Planning', 'Technical Strategy'],
-    'Site Reliability Engineer': ['Linux', 'Monitoring', 'Automation', 'Incident Management', 'Performance Tuning', 'Capacity Planning']
+# Flatten skills with department info for better matching
+ALL_SKILLS_WITH_DEPT = []
+for dept, categories in SKILL_DATABASE.items():
+    for category, skills in categories.items():
+        for skill in skills:
+            ALL_SKILLS_WITH_DEPT.append({
+                'skill': skill.lower(),
+                'display': skill,
+                'category': category,
+                'department': dept
+            })
+
+# Skill variations for better matching
+SKILL_VARIATIONS = {
+    'js': 'javascript',
+    'ts': 'typescript',
+    'py': 'python',
+    'ml': 'machine learning',
+    'dl': 'deep learning',
+    'k8s': 'kubernetes',
+    'tf': 'tensorflow',
+    'sklearn': 'scikit-learn',
+    'aws': 'amazon web services',
+    'gcp': 'google cloud platform',
+    'cpp': 'c++',
+    'csharp': 'c#',
+    'reactjs': 'react',
+    'vuejs': 'vue.js',
+    'nodejs': 'node.js',
+    'expressjs': 'express.js',
+    'd3': 'd3.js',
+    'ai': 'artificial intelligence',
+    'nlp': 'natural language processing',
+    'cv': 'computer vision',
+    'fintech': 'financial technology',
+    'seo': 'search engine optimization',
+    'sem': 'search engine marketing',
+    'ppc': 'pay per click',
+    'crm': 'customer relationship management',
+    'erp': 'enterprise resource planning',
+    'hris': 'human resource information system'
 }
 
-# Course database
+# --------------------------
+# COMPREHENSIVE ROLE REQUIREMENTS BY DEPARTMENT
+# --------------------------
+ROLE_REQUIREMENTS = {
+    # TECHNOLOGY ROLES
+    'Software Engineer': {
+        'skills': ['python', 'java', 'javascript', 'git', 'sql', 'data structures', 'algorithms', 'oop'],
+        'department': 'technology',
+        'weight': 1.0
+    },
+    'Data Scientist': {
+        'skills': ['python', 'machine learning', 'data analysis', 'sql', 'statistics', 'pandas', 'numpy', 'visualization'],
+        'department': 'technology',
+        'weight': 1.0
+    },
+    'DevOps Engineer': {
+        'skills': ['aws', 'docker', 'kubernetes', 'linux', 'ci/cd', 'jenkins', 'terraform', 'ansible', 'git'],
+        'department': 'technology',
+        'weight': 1.0
+    },
+    'Full Stack Developer': {
+        'skills': ['javascript', 'react', 'node.js', 'html', 'css', 'sql', 'rest api', 'git', 'mongodb'],
+        'department': 'technology',
+        'weight': 1.0
+    },
+    'Backend Developer': {
+        'skills': ['python', 'java', 'sql', 'django', 'flask', 'api', 'database design', 'microservices'],
+        'department': 'technology',
+        'weight': 1.0
+    },
+    'Frontend Developer': {
+        'skills': ['javascript', 'react', 'html', 'css', 'typescript', 'responsive design', 'ui/ux', 'redux'],
+        'department': 'technology',
+        'weight': 1.0
+    },
+    'Machine Learning Engineer': {
+        'skills': ['python', 'machine learning', 'tensorflow', 'pytorch', 'statistics', 'data processing', 'model deployment'],
+        'department': 'technology',
+        'weight': 1.0
+    },
+    'Cloud Architect': {
+        'skills': ['aws', 'azure', 'docker', 'kubernetes', 'networking', 'security', 'microservices', 'cloud design'],
+        'department': 'technology',
+        'weight': 1.0
+    },
+    'Data Engineer': {
+        'skills': ['python', 'sql', 'etl', 'data warehousing', 'spark', 'hadoop', 'kafka', 'airflow'],
+        'department': 'technology',
+        'weight': 1.0
+    },
+    'Security Engineer': {
+        'skills': ['network security', 'encryption', 'penetration testing', 'firewalls', 'siem', 'incident response'],
+        'department': 'technology',
+        'weight': 1.0
+    },
+    'QA Engineer': {
+        'skills': ['testing', 'selenium', 'automation', 'jest', 'pytest', 'bug tracking', 'test planning'],
+        'department': 'technology',
+        'weight': 1.0
+    },
+    'Technical Lead': {
+        'skills': ['architecture', 'leadership', 'code review', 'mentoring', 'project planning', 'technical strategy'],
+        'department': 'technology',
+        'weight': 1.0
+    },
+    'Site Reliability Engineer': {
+        'skills': ['linux', 'monitoring', 'automation', 'incident management', 'performance tuning', 'capacity planning'],
+        'department': 'technology',
+        'weight': 1.0
+    },
+    'Database Administrator': {
+        'skills': ['sql', 'database design', 'performance tuning', 'backup recovery', 'data modeling'],
+        'department': 'technology',
+        'weight': 1.0
+    },
+    'Product Manager': {
+        'skills': ['project management', 'communication', 'agile', 'leadership', 'analytics', 'user research', 'strategy'],
+        'department': 'technology',
+        'weight': 0.8
+    },
+    'UX/UI Designer': {
+        'skills': ['html', 'css', 'javascript', 'design', 'prototyping', 'user research', 'figma', 'adobe xd'],
+        'department': 'technology',
+        'weight': 0.8
+    },
+    
+    # FINANCE ROLES
+    'Financial Analyst': {
+        'skills': ['financial analysis', 'financial modeling', 'excel', 'valuation', 'budgeting', 'forecasting'],
+        'department': 'finance',
+        'weight': 1.0
+    },
+    'Investment Banker': {
+        'skills': ['investment banking', 'financial modeling', 'valuation', 'mergers and acquisitions', 'deals'],
+        'department': 'finance',
+        'weight': 1.0
+    },
+    'Accountant': {
+        'skills': ['accounting', 'bookkeeping', 'quickbooks', 'tax preparation', 'gaap', 'auditing'],
+        'department': 'finance',
+        'weight': 1.0
+    },
+    'Financial Advisor': {
+        'skills': ['financial planning', 'wealth management', 'investment advice', 'retirement planning'],
+        'department': 'finance',
+        'weight': 1.0
+    },
+    'Risk Manager': {
+        'skills': ['risk management', 'credit risk', 'market risk', 'compliance', 'regulations'],
+        'department': 'finance',
+        'weight': 1.0
+    },
+    'Portfolio Manager': {
+        'skills': ['portfolio management', 'investment analysis', 'asset allocation', 'performance measurement'],
+        'department': 'finance',
+        'weight': 1.0
+    },
+    'Auditor': {
+        'skills': ['auditing', 'internal audit', 'compliance', 'risk assessment', 'accounting'],
+        'department': 'finance',
+        'weight': 1.0
+    },
+    'Tax Specialist': {
+        'skills': ['tax preparation', 'tax planning', 'tax law', 'irs regulations', 'accounting'],
+        'department': 'finance',
+        'weight': 1.0
+    },
+    
+    # MARKETING ROLES
+    'Digital Marketing Manager': {
+        'skills': ['digital marketing', 'seo', 'sem', 'social media', 'content marketing', 'analytics'],
+        'department': 'marketing',
+        'weight': 1.0
+    },
+    'SEO Specialist': {
+        'skills': ['seo', 'google analytics', 'keyword research', 'link building', 'content optimization'],
+        'department': 'marketing',
+        'weight': 1.0
+    },
+    'Social Media Manager': {
+        'skills': ['social media', 'content creation', 'community management', 'instagram', 'facebook'],
+        'department': 'marketing',
+        'weight': 1.0
+    },
+    'Content Marketer': {
+        'skills': ['content marketing', 'copywriting', 'blogging', 'email marketing', 'storytelling'],
+        'department': 'marketing',
+        'weight': 1.0
+    },
+    'Brand Manager': {
+        'skills': ['brand strategy', 'brand management', 'marketing strategy', 'campaign management'],
+        'department': 'marketing',
+        'weight': 1.0
+    },
+    'Marketing Analyst': {
+        'skills': ['marketing analytics', 'google analytics', 'data analysis', 'market research'],
+        'department': 'marketing',
+        'weight': 1.0
+    },
+    'PR Specialist': {
+        'skills': ['public relations', 'media relations', 'press releases', 'crisis communication'],
+        'department': 'marketing',
+        'weight': 1.0
+    },
+    
+    # HR ROLES
+    'HR Manager': {
+        'skills': ['hr management', 'recruiting', 'employee relations', 'performance management'],
+        'department': 'hr',
+        'weight': 1.0
+    },
+    'Recruiter': {
+        'skills': ['recruiting', 'talent acquisition', 'sourcing', 'interviewing', 'applicant tracking'],
+        'department': 'hr',
+        'weight': 1.0
+    },
+    'HR Business Partner': {
+        'skills': ['hr strategy', 'employee relations', 'talent management', 'organizational development'],
+        'department': 'hr',
+        'weight': 1.0
+    },
+    'Training Specialist': {
+        'skills': ['training', 'learning and development', 'onboarding', 'employee training'],
+        'department': 'hr',
+        'weight': 1.0
+    },
+    'Compensation Analyst': {
+        'skills': ['compensation', 'benefits', 'salary benchmarking', 'payroll'],
+        'department': 'hr',
+        'weight': 1.0
+    },
+    
+    # SALES ROLES
+    'Sales Representative': {
+        'skills': ['sales', 'lead generation', 'cold calling', 'negotiation', 'closing'],
+        'department': 'sales',
+        'weight': 1.0
+    },
+    'Account Executive': {
+        'skills': ['sales', 'account management', 'b2b sales', 'relationship building', 'negotiation'],
+        'department': 'sales',
+        'weight': 1.0
+    },
+    'Sales Manager': {
+        'skills': ['sales management', 'team leadership', 'sales strategy', 'forecasting'],
+        'department': 'sales',
+        'weight': 1.0
+    },
+    'Business Development Manager': {
+        'skills': ['business development', 'partnerships', 'strategic alliances', 'sales'],
+        'department': 'sales',
+        'weight': 1.0
+    },
+    'Account Manager': {
+        'skills': ['account management', 'client relations', 'upselling', 'customer service'],
+        'department': 'sales',
+        'weight': 1.0
+    }
+}
+
+# Course database (PRESERVED)
 course_db = {
     "python": ["Python for Everybody – Coursera", "Complete Python Bootcamp – Udemy", "Advanced Python – Pluralsight"],
     "javascript": ["Modern JavaScript – The Odin Project", "JavaScript: The Advanced Concepts – ZeroToMastery", "JavaScript Algorithms – freeCodeCamp"],
@@ -119,8 +503,14 @@ course_db = {
 # --------------------------
 # DATABASE FUNCTIONS
 # --------------------------
+def get_db():
+    """Get database connection"""
+    conn = sqlite3.connect(app.config['DATABASE'])
+    conn.row_factory = sqlite3.Row
+    return conn
+
 def init_database():
-    """Initialize SQLite database with enhanced schema"""
+    """Initialize SQLite database"""
     try:
         conn = sqlite3.connect(app.config['DATABASE'])
         cursor = conn.cursor()
@@ -134,8 +524,7 @@ def init_database():
             password TEXT NOT NULL,
             full_name TEXT,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            last_login TIMESTAMP,
-            preferences TEXT DEFAULT '{}'
+            last_login TIMESTAMP
         )
         ''')
         
@@ -152,22 +541,10 @@ def init_database():
             jobs TEXT,
             courses TEXT,
             ai_response TEXT,
-            match_history TEXT DEFAULT '[]',
-            analysis_version TEXT DEFAULT '2.0',
-            FOREIGN KEY (user_id) REFERENCES users(id)
-        )
-        ''')
-        
-        # Create user_sessions table
-        cursor.execute('''
-        CREATE TABLE IF NOT EXISTS user_sessions (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id INTEGER,
-            session_token TEXT,
-            login_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            logout_time TIMESTAMP,
-            ip_address TEXT,
-            user_agent TEXT,
+            contact_info TEXT,
+            education TEXT,
+            experience TEXT,
+            department TEXT,
             FOREIGN KEY (user_id) REFERENCES users(id)
         )
         ''')
@@ -186,7 +563,7 @@ def init_database():
         )
         ''')
         
-        # Create default admin user if not exists
+        # Create default admin user
         cursor.execute("SELECT * FROM users WHERE email = ?", ("admin@skillsense.com",))
         if not cursor.fetchone():
             password_hash = generate_password_hash("admin123")
@@ -203,156 +580,237 @@ def init_database():
     except Exception as e:
         print(f"❌ Database initialization error: {e}")
 
-def get_db_connection():
-    """Get database connection"""
-    conn = sqlite3.connect(app.config['DATABASE'])
-    conn.row_factory = sqlite3.Row
-    return conn
-
-# Initialize database
 init_database()
 
 # --------------------------
-# AUTHENTICATION DECORATOR - DEFINED BEFORE ROUTES
+# AUTHENTICATION DECORATOR
 # --------------------------
 def login_required(f):
-    """Decorator to require login for routes"""
     @wraps(f)
     def decorated_function(*args, **kwargs):
         if 'user_id' not in session:
-            flash('Please log in to access this page', 'error')
+            flash('Please log in first', 'error')
             return redirect(url_for('login'))
         return f(*args, **kwargs)
     return decorated_function
 
 def allowed_file(filename):
-    """Check if file extension is allowed"""
-    return '.' in filename and \
-           filename.rsplit('.', 1)[1].lower() in app.config['ALLOWED_EXTENSIONS']
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in app.config['ALLOWED_EXTENSIONS']
+
+init_database()
 
 # --------------------------
-# ENHANCED RESUME PARSING
+# AUTHENTICATION DECORATOR
+# --------------------------
+def login_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if 'user_id' not in session:
+            flash('Please log in first', 'error')
+            return redirect(url_for('login'))
+        return f(*args, **kwargs)
+    return decorated_function
+def migrate_database():
+    """Add missing columns to existing tables"""
+    try:
+        conn = sqlite3.connect(app.config['DATABASE'])
+        cursor = conn.cursor()
+        
+        # Check existing columns in user_uploads
+        cursor.execute("PRAGMA table_info(user_uploads)")
+        existing_columns = [col[1] for col in cursor.fetchall()]
+        
+        # Columns that should exist
+        required_columns = ['skills', 'top_roles', 'jobs', 'courses', 'ai_response', 
+                           'contact_info', 'education', 'experience', 'department']
+        
+        # Add missing columns
+        for col in required_columns:
+            if col not in existing_columns:
+                try:
+                    cursor.execute(f"ALTER TABLE user_uploads ADD COLUMN {col} TEXT")
+                    print(f"✅ Added missing column: {col}")
+                except Exception as e:
+                    print(f"⚠️ Could not add column {col}: {e}")
+        
+        conn.commit()
+        conn.close()
+        print("✅ Database migration complete")
+        
+    except Exception as e:
+        print(f"❌ Migration error: {e}")
+
+# Call this after init_database()
+migrate_database()
+def allowed_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in app.config['ALLOWED_EXTENSIONS']
+# --------------------------
+# ADVANCED RESUME PARSING
 # --------------------------
 def extract_text_from_pdf(filepath):
-    """Extract text from PDF file with enhanced error handling"""
+    """Fast text extraction"""
     try:
-        # Check file extension
         if filepath.lower().endswith('.pdf'):
             try:
                 import PyPDF2
                 text = ""
                 with open(filepath, 'rb') as file:
                     pdf_reader = PyPDF2.PdfReader(file)
-                    for page in pdf_reader.pages:
+                    for page in pdf_reader.pages[:5]:
                         page_text = page.extract_text()
                         if page_text:
                             text += page_text + "\n"
                 if text.strip():
                     return text
-            except ImportError:
-                print("⚠️ PyPDF2 not installed, using fallback")
-            except Exception as e:
-                print(f"⚠️ PDF extraction error: {e}")
+            except:
+                pass
         
-        elif filepath.lower().endswith(('.doc', '.docx')):
-            try:
-                import docx
-                doc = docx.Document(filepath)
-                text = "\n".join([paragraph.text for paragraph in doc.paragraphs])
-                return text
-            except ImportError:
-                print("⚠️ python-docx not installed, using fallback")
-            except Exception as e:
-                print(f"⚠️ DOCX extraction error: {e}")
+        # Try reading as text
+        with open(filepath, 'r', encoding='utf-8', errors='ignore') as f:
+            return f.read()
+    except:
+        return ""
+
+def extract_contact_info(text):
+    """Extract contact information"""
+    contact = {
+        'name': None,
+        'email': None,
+        'phone': None,
+        'linkedin': None,
+        'github': None
+    }
+    
+    lines = text.split('\n')[:10]
+    
+    # Extract name (usually first non-empty line)
+    for line in lines:
+        line = line.strip()
+        if line and len(line.split()) <= 4 and not any(x in line.lower() for x in ['@', 'http', 'www', 'phone', 'email']):
+            contact['name'] = line
+            break
+    
+    # Extract email
+    email_pattern = r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b'
+    emails = re.findall(email_pattern, text)
+    if emails:
+        contact['email'] = emails[0]
+    
+    # Extract phone
+    phone_pattern = r'(\+\d{1,3}[-.]?)?\(?\d{3}\)?[-.]?\d{3}[-.]?\d{4}'
+    phones = re.findall(phone_pattern, text)
+    if phones:
+        contact['phone'] = phones[0]
+    
+    # Extract LinkedIn
+    linkedin_pattern = r'(?:https?://)?(?:www\.)?linkedin\.com/in/[\w-]+'
+    linkedin = re.findall(linkedin_pattern, text, re.IGNORECASE)
+    if linkedin:
+        contact['linkedin'] = linkedin[0]
+    
+    # Extract GitHub
+    github_pattern = r'(?:https?://)?(?:www\.)?github\.com/[\w-]+'
+    github = re.findall(github_pattern, text, re.IGNORECASE)
+    if github:
+        contact['github'] = github[0]
+    
+    return contact
+
+def extract_education(text):
+    """Extract education information"""
+    education = []
+    edu_keywords = ['bachelor', 'master', 'phd', 'b.tech', 'm.tech', 'b.e', 'm.e', 'b.sc', 'm.sc', 
+                    'bca', 'mca', 'mba', 'degree', 'university', 'college', 'institute']
+    
+    lines = text.split('\n')
+    for i, line in enumerate(lines):
+        line_lower = line.lower()
+        if any(keyword in line_lower for keyword in edu_keywords):
+            edu_text = line.strip()
+            # Get next line if it's part of education
+            if i + 1 < len(lines) and len(lines[i + 1].strip()) > 0:
+                next_line = lines[i + 1].strip()
+                if not any(x in next_line.lower() for x in ['experience', 'skill', 'project']):
+                    edu_text += " " + next_line
+            education.append(edu_text)
+    
+    return list(set(education))[:3]
+
+def extract_experience_summary(text):
+    """Extract work experience summary"""
+    exp_keywords = ['experience', 'work', 'employment', 'job']
+    experience = []
+    
+    lines = text.split('\n')
+    exp_section = False
+    
+    for i, line in enumerate(lines):
+        line_lower = line.lower()
         
-        elif filepath.lower().endswith('.txt'):
-            with open(filepath, 'r', encoding='utf-8', errors='ignore') as file:
-                return file.read()
+        # Find experience section
+        if any(keyword in line_lower for keyword in exp_keywords) and 'summary' not in line_lower:
+            exp_section = True
+            continue
         
-        # Fallback to reading as text
-        with open(filepath, 'r', encoding='utf-8', errors='ignore') as file:
-            return file.read()
-            
-    except Exception as e:
-        print(f"❌ Error extracting text: {e}")
+        # Extract experience entries (usually with dates)
+        if exp_section and re.search(r'\b(19|20)\d{2}\b', line):
+            exp_text = line.strip()
+            # Get next few lines for context
+            for j in range(1, 4):
+                if i + j < len(lines) and lines[i + j].strip():
+                    next_line = lines[i + j].strip()
+                    if not any(x in next_line.lower() for x in ['education', 'skill', 'project']):
+                        exp_text += " " + next_line
+                    else:
+                        break
+            experience.append(exp_text)
+        
+        # End of experience section
+        if exp_section and any(keyword in line_lower for keyword in ['education', 'skill', 'project']):
+            exp_section = False
     
-    # Return enhanced mock data as fallback
-    return """
-    JOHN DOE - Senior Software Engineer
-    Email: john.doe@email.com | Phone: (555) 123-4567 | Location: San Francisco, CA
-    
-    SUMMARY
-    Experienced software engineer with 5+ years in full-stack development. 
-    Passionate about building scalable applications and solving complex problems.
-    
-    SKILLS
-    • Programming: Python, JavaScript, Java, TypeScript, Go
-    • Web Frameworks: Django, Flask, React, Node.js, Express
-    • Databases: PostgreSQL, MongoDB, Redis, MySQL
-    • Cloud & DevOps: AWS (EC2, S3, Lambda), Docker, Kubernetes, Jenkins
-    • Tools: Git, JIRA, VS Code, Postman, Figma
-    • Soft Skills: Team Leadership, Agile/Scrum, Communication, Problem Solving
-    
-    WORK EXPERIENCE
-    
-    Senior Software Engineer | TechCorp Inc. | 2020 - Present
-    • Led development of microservices architecture using Python and Docker
-    • Implemented CI/CD pipelines reducing deployment time by 40%
-    • Mentored junior developers and conducted code reviews
-    • Technologies: Python, Django, AWS, PostgreSQL, React
-    
-    Full Stack Developer | Startup Innovations | 2018 - 2020
-    • Developed RESTful APIs serving 10k+ daily users
-    • Built responsive frontend using React and Redux
-    • Optimized database queries improving performance by 30%
-    • Technologies: JavaScript, Node.js, MongoDB, Express
-    
-    EDUCATION
-    
-    BS Computer Science | University of Technology | 2014 - 2018
-    • GPA: 3.8/4.0
-    • Coursework: Data Structures, Algorithms, Database Systems, Web Development
-    
-    CERTIFICATIONS
-    • AWS Certified Solutions Architect
-    • Certified Kubernetes Administrator (CKA)
-    • Professional Scrum Master I
-    
-    PROJECTS
-    • E-commerce Platform: Full-stack application with React and Django
-    • Task Manager: Python Flask app with real-time updates
-    • Portfolio Website: Personal site with modern UI/UX
-    """
+    return experience[:5]
 
 def extract_skills_from_text(text):
-    """Extract skills from text using enhanced keyword matching"""
-    found_skills = []
+    """Extract ALL skills from text with department categorization"""
     text_lower = text.lower()
+    found_skills = []
+    skills_by_department = {}
     
-    # Check each skill in each category with improved matching
-    for category, skills in skill_categories.items():
-        for skill in skills:
-            skill_lower = skill.lower()
-            # Check for skill with various patterns
-            patterns = [
-                skill_lower,
-                skill_lower.replace(' ', ''),
-                skill_lower.replace('.', ''),
-                skill_lower.replace('#', 'sharp') if 'c#' in skill_lower else None,
-                skill_lower.replace('++', 'pp') if 'c++' in skill_lower else None
-            ]
+    # Check each skill
+    for skill_info in ALL_SKILLS_WITH_DEPT:
+        skill = skill_info['skill']
+        # Check exact match
+        if skill in text_lower:
+            found_skills.append(skill_info['display'])
             
-            for pattern in patterns:
-                if pattern and pattern in text_lower:
-                    # Check word boundaries for more accurate matching
-                    if f" {pattern} " in f" {text_lower} " or text_lower.startswith(pattern) or text_lower.endswith(pattern):
-                        found_skills.append(skill)
-                        break
+            # Track by department
+            dept = skill_info['department']
+            if dept not in skills_by_department:
+                skills_by_department[dept] = []
+            skills_by_department[dept].append(skill_info['display'])
+        
+        # Check word boundary match
+        elif re.search(r'\b' + re.escape(skill) + r'\b', text_lower):
+            found_skills.append(skill_info['display'])
+            dept = skill_info['department']
+            if dept not in skills_by_department:
+                skills_by_department[dept] = []
+            skills_by_department[dept].append(skill_info['display'])
     
-    # If no skills found, return enhanced default ones
-    if not found_skills:
-        found_skills = ['Python', 'JavaScript', 'SQL', 'Communication', 'Problem Solving', 
-                       'Git', 'HTML', 'CSS', 'Teamwork', 'Leadership']
+    # Check variations
+    for abbr, full in SKILL_VARIATIONS.items():
+        if abbr in text_lower:
+            # Find the full skill info
+            for skill_info in ALL_SKILLS_WITH_DEPT:
+                if skill_info['skill'] == full:
+                    if skill_info['display'] not in found_skills:
+                        found_skills.append(skill_info['display'])
+                        dept = skill_info['department']
+                        if dept not in skills_by_department:
+                            skills_by_department[dept] = []
+                        skills_by_department[dept].append(skill_info['display'])
+                    break
     
     # Remove duplicates while preserving order
     unique_skills = []
@@ -360,509 +818,197 @@ def extract_skills_from_text(text):
         if skill not in unique_skills:
             unique_skills.append(skill)
     
-    return unique_skills[:20]  # Return top 20 skills
+    return {
+        'all': unique_skills[:30],
+        'by_department': skills_by_department
+    }
 
 # --------------------------
-# ML-BASED ROLE PREDICTION
+# SMART ROLE PREDICTION
 # --------------------------
-def predict_top_roles(skills):
-    """Predict top career roles based on skills with ML-style scoring"""
-    role_scores = {}
-    skills_lower = [s.lower() for s in skills]
+def predict_top_roles(skills_result):
+    """Predict roles based on extracted skills with department awareness"""
+    skills_lower = [s.lower() for s in skills_result['all']]
+    skills_by_dept = skills_result['by_department']
     
-    # Calculate scores for each role
-    for role, required_skills in role_requirements.items():
+    # Determine primary department
+    dept_scores = {}
+    for dept, dept_skills in skills_by_dept.items():
+        dept_scores[dept] = len(dept_skills)
+    
+    primary_dept = max(dept_scores.items(), key=lambda x: x[1])[0] if dept_scores else 'technology'
+    
+    # Score each role
+    role_scores = []
+    
+    for role, requirements in ROLE_REQUIREMENTS.items():
+        # Only consider roles from primary department and related departments
+        if requirements['department'] != primary_dept and requirements['weight'] < 0.8:
+            continue
+        
         score = 0
         matched_skills = []
         
         for skill in skills_lower:
-            for req_skill in required_skills:
-                req_lower = req_skill.lower()
-                # Check for partial matches
-                if req_lower in skill or skill in req_lower:
-                    score += 15  # Base points per match
+            for req_skill in requirements['skills']:
+                if req_skill in skill or skill in req_skill:
+                    score += 10
                     matched_skills.append(req_skill)
                     break
         
-        # Add bonus for multiple matches in same category
+        # Apply department weight
+        score = score * requirements['weight']
+        
+        # Add bonus for multiple matches
         unique_matches = len(set(matched_skills))
         if unique_matches >= 3:
-            score += 10
-        if unique_matches >= 5:
             score += 15
+        if unique_matches >= 5:
+            score += 25
         
-        # Add randomness for realism (70-95% range)
-        base_score = min(95, score)
-        if base_score > 0:
-            variation = random.randint(-5, 5)
-            final_score = max(60, min(98, base_score + variation))
-            role_scores[role] = final_score
+        if score > 30:  # Minimum threshold
+            final_score = min(98, int(score))
+            role_scores.append((role, final_score, requirements['department']))
     
-    # Sort by score and return top 5
-    sorted_roles = sorted(role_scores.items(), key=lambda x: x[1], reverse=True)
-    return sorted_roles[:5]
+    # Sort by score
+    role_scores.sort(key=lambda x: x[1], reverse=True)
+    
+    # Return top 5 formatted for display
+    return [[role, score] for role, score, _ in role_scores[:5]]
 
+# --------------------------
+# JOB SEARCH
+# --------------------------
 def get_jobs_for_role(role):
-    """Get job listings for a specific role with real job search links"""
-    # Base URLs for job searches
-    job_boards = {
-        'linkedin': 'https://www.linkedin.com/jobs/search/?keywords=',
-        'indeed': 'https://www.indeed.com/q-',
-        'glassdoor': 'https://www.glassdoor.com/Job/jobs.htm?sc.keyword=',
-        'monster': 'https://www.monster.com/jobs/search/?q=',
-        'google': 'https://www.google.com/search?q=',
-        'ziprecruiter': 'https://www.ziprecruiter.com/candidate/search?search='
-    }
+    """Get job listings"""
+    try:
+        headers = {
+            "X-RapidAPI-Key": JSEARCH_API_KEY,
+            "X-RapidAPI-Host": JSEARCH_API_HOST
+        }
+        querystring = {"query": role, "num_pages": "1", "page": "1"}
+        
+        response = requests.get(JSEARCH_API_URL, headers=headers, params=querystring, timeout=3)
+        
+        if response.status_code == 200:
+            data = response.json()
+            jobs = []
+            for job in data.get("data", [])[:5]:
+                title = job.get("job_title", "No Title")
+                link = job.get("job_apply_link") or "#"
+                company = job.get("employer_name", "")
+                jobs.append((f"{title} at {company}", link))
+            if jobs:
+                return jobs
+    except:
+        pass
     
-    # Role-specific search terms
-    role_search_terms = {
-        'Software Engineer': 'software-engineer',
-        'Data Scientist': 'data-scientist',
-        'DevOps Engineer': 'devops-engineer',
-        'Full Stack Developer': 'full-stack-developer',
-        'Backend Developer': 'backend-developer',
-        'Frontend Developer': 'frontend-developer',
-        'Machine Learning Engineer': 'machine-learning-engineer',
-        'Cloud Architect': 'cloud-architect',
-        'Product Manager': 'product-manager',
-        'UX/UI Designer': 'ui-ux-designer',
-        'Python Developer': 'python-developer',
-        'Java Developer': 'java-developer',
-        'React Developer': 'react-developer',
-        'Node.js Developer': 'nodejs-developer',
-        'AWS Engineer': 'aws-engineer',
-        'Data Analyst': 'data-analyst',
-        'Security Engineer': 'security-engineer',
-        'QA Engineer': 'qa-engineer',
-        'Technical Lead': 'technical-lead',
-        'Site Reliability Engineer': 'site-reliability-engineer'
-    }
-    
-    # Get search term for the role
-    search_term = role_search_terms.get(role, role.lower().replace(' ', '-'))
-    
-    # Generate diverse job listings with real URLs
-    jobs = [
-        (f"{role} - LinkedIn Jobs", f"{job_boards['linkedin']}{search_term}"),
-        (f"{role} - Indeed Jobs", f"{job_boards['indeed']}{search_term.replace('-', '+')}"),
-        (f"Remote {role}", f"{job_boards['linkedin']}{search_term}&location=remote"),
-        (f"Senior {role}", f"{job_boards['linkedin']}{search_term}&f_E=2"),
-        (f"Junior {role}", f"{job_boards['linkedin']}{search_term}&f_E=1"),
-        (f"{role} - Glassdoor", f"{job_boards['glassdoor']}{search_term.replace('-', '+')}"),
-        (f"{role} - ZipRecruiter", f"{job_boards['ziprecruiter']}{search_term.replace('-', '+')}")
+    # Fallback
+    search_term = role.lower().replace(' ', '-')
+    return [
+        (f"{role} - LinkedIn", f"https://www.linkedin.com/jobs/search/?keywords={search_term}"),
+        (f"{role} - Indeed", f"https://www.indeed.com/q-{search_term}.html"),
+        (f"Remote {role}", f"https://www.linkedin.com/jobs/search/?keywords={search_term}&location=remote"),
+        (f"Senior {role}", f"https://www.linkedin.com/jobs/search/?keywords=senior-{search_term}"),
+        (f"{role} - Glassdoor", f"https://www.glassdoor.com/Job/jobs.htm?sc.keyword={search_term}")
     ]
-    
-    # Remove duplicates and return top 5
-    unique_jobs = []
-    seen = set()
-    for job in jobs:
-        if job[1] not in seen:
-            seen.add(job[1])
-            unique_jobs.append(job)
-    
-    return unique_jobs[:5]
 
 # --------------------------
-# ENHANCED COURSE RECOMMENDATIONS
+# COURSE RECOMMENDATIONS (PRESERVED)
 # --------------------------
-def recommend_courses_baseline(skills):
-    """Baseline course recommendation without LLM"""
+def recommend_courses(skills):
+    """Fast course recommendations"""
     recommended = []
     added_courses = set()
-    skills_lower = [s.lower() for s in skills]
+    skills_lower = [s.lower() for s in skills['all'][:5]]
     
-    for skill in skills_lower[:8]:  # Check top 8 skills
+    for skill in skills_lower:
         for course_skill, courses in course_db.items():
             if course_skill in skill or skill in course_skill:
-                for course in courses[:2]:  # Take first 2 courses per skill
+                for course in courses[:2]:
                     if course not in added_courses:
                         recommended.append((course_skill.title(), course))
                         added_courses.add(course)
+                break
     
-    # If no courses found, recommend popular ones
-    if not recommended:
+    if len(recommended) < 3:
         popular = [
             ('Python', 'Python for Everybody – Coursera'),
             ('JavaScript', 'Modern JavaScript – The Odin Project'),
-            ('SQL', 'The Complete SQL Bootcamp – Udemy'),
-            ('AWS', 'AWS Certified Solutions Architect – AWS Training'),
-            ('React', 'React – The Complete Guide – Udemy')
+            ('SQL', 'The Complete SQL Bootcamp – Udemy')
         ]
-        recommended = popular
+        for item in popular:
+            if item[1] not in added_courses:
+                recommended.append(item)
+                added_courses.add(item[1])
+            if len(recommended) >= 5:
+                break
     
     return recommended[:5]
 
-def _format_candidates(cands):
-    """Format course candidates for LLM"""
-    lines = []
-    for i, (skill, title) in enumerate(cands, 1):
-        lines.append(f"{i}. [{skill}] {title}")
-    return "\n".join(lines)
-
-def _parse_llm_selection(text, num_to_take=5):
-    """Parse LLM response to extract selected course indices"""
-    indices = []
-    for line in text.splitlines()[:10]:
-        # Look for numbers in the response
-        for word in line.split():
-            if word.isdigit():
-                num = int(word)
-                if 1 <= num <= 20 and num not in indices:
-                    indices.append(num)
-                    if len(indices) >= num_to_take:
-                        return indices
-            elif word.endswith(',') and word[:-1].isdigit():
-                num = int(word[:-1])
-                if 1 <= num <= 20 and num not in indices:
-                    indices.append(num)
-                    if len(indices) >= num_to_take:
-                        return indices
-    return indices[:num_to_take]
-
-def recommend_courses_llm(skills):
-    """LLM-enhanced course recommendation (if LM Studio available)"""
-    if not LM_AVAILABLE:
-        return recommend_courses_baseline(skills)
-    
-    try:
-        # Build candidate pool
-        pool = []
-        skills_lower = [s.lower() for s in skills[:10]]
-        
-        for skill in skills_lower:
-            for course_skill, courses in course_db.items():
-                if course_skill in skill or skill in course_skill:
-                    for c in courses[:3]:
-                        pool.append((course_skill.title(), c))
-        
-        # Remove duplicates
-        unique_pool = []
-        seen = set()
-        for item in pool:
-            if item[1] not in seen:
-                seen.add(item[1])
-                unique_pool.append(item)
-        
-        if len(unique_pool) < 5:
-            return recommend_courses_baseline(skills)
-        
-        # Take top candidates for LLM to rank
-        candidates = unique_pool[:15]
-        candidate_block = _format_candidates(candidates)
-        
-        # Prepare LLM prompt
-        system_msg = "You are a career advisor. Return only numbers of the best courses for the given skills."
-        user_msg = f"User skills: {', '.join(skills[:7])}\n\nCourse options:\n{candidate_block}\n\nPick the 5 most relevant courses. Return numbers only, comma-separated."
-        
-        # Call LM Studio
-        response = requests.post(
-            f"{LM_BASE_URL}/chat/completions",
-            json={
-                "model": COURSE_MODEL,
-                "messages": [
-                    {"role": "system", "content": system_msg},
-                    {"role": "user", "content": user_msg}
-                ],
-                "temperature": 0.3,
-                "max_tokens": 50,
-                "top_k": 20,
-                "top_p": 0.8
-            },
-            timeout=COURSE_TIMEOUT
-        )
-        
-        if response.status_code == 200:
-            result = response.json()
-            content = result['choices'][0]['message']['content']
-            chosen_indices = _parse_llm_selection(content, num_to_take=5)
-            
-            ranked = []
-            for idx in chosen_indices:
-                if 1 <= idx <= len(candidates):
-                    ranked.append(candidates[idx - 1])
-            
-            if ranked:
-                return ranked
-        
-        return recommend_courses_baseline(skills)
-        
-    except Exception as e:
-        print(f"LLM course recommendation failed: {e}")
-        return recommend_courses_baseline(skills)
-
-def recommend_courses(skills, use_llm=True):
-    """Main course recommendation function"""
-    if use_llm and LM_AVAILABLE:
-        return recommend_courses_llm(skills)
-    return recommend_courses_baseline(skills)
-
 # --------------------------
-# ENHANCED AI RESPONSES
+# AI RESPONSE
 # --------------------------
 def ai_answer_query(query, skills=None):
-    """Generate AI response for career queries"""
+    """Quick AI response"""
     if skills is None:
-        skills = []
+        skills = {'all': []}
     
-    # If LM Studio is available, use it for better responses
-    if LM_AVAILABLE:
-        try:
-            # Limit query length for speed
-            query_short = query[:300] if len(query) > 300 else query
-            skills_str = ', '.join(skills[:7]) if skills else 'general technology'
-            
-            prompt = f"""User skills: {skills_str}
-User question: {query_short}
-
-Provide concise, helpful career advice (2-3 sentences):"""
-            
-            response = requests.post(
-                f"{LM_BASE_URL}/chat/completions",
-                json={
-                    "model": CHATBOT_MODEL,
-                    "messages": [{"role": "user", "content": prompt}],
-                    "temperature": 0.5,
-                    "max_tokens": 120,
-                    "top_k": 20,
-                    "top_p": 0.8
-                },
-                timeout=CHATBOT_TIMEOUT
-            )
-            
-            if response.status_code == 200:
-                result = response.json()
-                return result['choices'][0]['message']['content'].strip()
-        except Exception as e:
-            print(f"LM Studio query failed: {e}, using fallback")
-    
-    # Enhanced fallback responses
     query_lower = query.lower()
     
-    # Job-related queries
-    if any(word in query_lower for word in ['job', 'career', 'position', 'work', 'employment']):
-        if 'remote' in query_lower:
-            return "Remote jobs are widely available in tech. Check LinkedIn, We Work Remotely, and Remote.co. Update your LinkedIn profile to 'Open to Work' and filter by remote locations."
-        elif 'interview' in query_lower:
-            return "For interviews, practice common questions, research the company, prepare your own questions, and use the STAR method for behavioral questions. Do mock interviews with friends."
-        elif 'entry' in query_lower or 'junior' in query_lower:
-            return f"For entry-level positions with skills in {', '.join(skills[:3]) if skills else 'tech'}, focus on building a strong portfolio, contributing to open source, and networking."
-        else:
-            return f"Based on your skills in {', '.join(skills[:3]) if skills else 'technology'}, look for roles on LinkedIn, Indeed, and Glassdoor. Tailor your resume for each application."
-    
-    # Learning/Courses queries
-    elif any(word in query_lower for word in ['learn', 'study', 'course', 'certification', 'training']):
-        skill_topics = {
-            'python': "For Python, I recommend: 'Python for Everybody' on Coursera, 'Complete Python Bootcamp' on Udemy.",
-            'javascript': "For JavaScript, check out: 'The Complete JavaScript Course' on Udemy, freeCodeCamp's JavaScript curriculum.",
-            'data': "For Data Science, consider: 'Machine Learning Specialization' by Andrew Ng on Coursera.",
-            'cloud': "For Cloud Computing, get certified: AWS Solutions Architect, Google Cloud certifications."
-        }
-        
-        for key, response in skill_topics.items():
-            if key in query_lower or (key in str(skills).lower()):
-                return response
-        
-        return f"Based on your profile, I recommend courses in {', '.join(skills[:2]) if skills else 'your area of interest'}. Check Coursera, Udemy, and edX."
-    
-    # Salary queries
-    elif any(word in query_lower for word in ['salary', 'pay', 'compensation', 'money', 'earn']):
-        return "Tech salaries vary: Junior: $60-85k, Mid-level: $85-120k, Senior: $120-180k+. Location, company size, and your skills impact compensation."
-    
-    # Resume/CV queries
-    elif any(word in query_lower for word in ['resume', 'cv', 'curriculum']):
-        return "Your resume should: 1) Be 1-2 pages, 2) Highlight achievements with metrics, 3) Use action verbs, 4) Include relevant keywords from job descriptions."
-    
-    # Default responses
+    if 'job' in query_lower or 'career' in query_lower:
+        return f"Based on your skills in {', '.join(skills['all'][:3])}, look for roles on LinkedIn and Indeed."
+    elif 'learn' in query_lower:
+        return f"Check Coursera and Udemy for courses in {', '.join(skills['all'][:2])}."
+    elif 'salary' in query_lower:
+        return "Tech salaries: Junior $60-85k, Mid $85-120k, Senior $120-180k+"
     else:
-        responses = [
-            f"Based on your skills in {', '.join(skills[:3]) if skills else 'technology'}, focus on building a strong portfolio and networking.",
-            "Consider getting certified in cloud platforms (AWS, Azure, GCP) as they're in high demand.",
-            "Soft skills like communication and teamwork are just as important as technical skills.",
-            "Stay updated with tech trends by following industry blogs and joining online communities.",
-            "Your skill set is valuable! Keep learning, building, and connecting with others in your field."
-        ]
-        return random.choice(responses)
-
-# --------------------------
-# ENHANCED JOB MATCHING FEATURE
-# --------------------------
-def extract_skills_from_job_description(text):
-    """Extract required skills from job description"""
-    found_skills = []
-    text_lower = text.lower()
-    
-    for category, skills in skill_categories.items():
-        for skill in skills:
-            skill_lower = skill.lower()
-            if (skill_lower in text_lower or 
-                skill_lower.replace(' ', '') in text_lower or
-                skill_lower.replace('.', '') in text_lower):
-                found_skills.append(skill)
-    
-    return list(dict.fromkeys(found_skills))
-
-def extract_experience_requirement(text):
-    """Extract required years of experience from job description"""
-    patterns = [
-        r'(\d+)[\+]?\s*(?:plus\s*)?years?.*?experience',
-        r'experience.*?(\d+)[\+]?\s*(?:plus\s*)?years?',
-        r'minimum.*?(\d+)[\+]?\s*years?',
-        r'at least.*?(\d+)[\+]?\s*years?'
-    ]
-    
-    text_lower = text.lower()
-    
-    for pattern in patterns:
-        matches = re.findall(pattern, text_lower)
-        if matches:
-            try:
-                return int(matches[0])
-            except:
-                pass
-    
-    return 0
-
-def extract_experience_from_resume(text):
-    """Extract years of experience from resume"""
-    text_lower = text.lower()
-    
-    patterns = [
-        r'(\d+)[\+]?\s*years?.*?experience',
-        r'experience.*?(\d+)[\+]?\s*years?'
-    ]
-    
-    for pattern in patterns:
-        matches = re.findall(pattern, text_lower)
-        if matches:
-            try:
-                return int(matches[0])
-            except:
-                pass
-    
-    return 2  # Default to 2 years
-
-def extract_job_title(text):
-    """Extract job title from job description"""
-    lines = text.split('\n')
-    for line in lines[:15]:
-        line = line.strip()
-        if len(line) > 3 and len(line) < 100:
-            job_indicators = ['engineer', 'developer', 'manager', 'analyst', 'architect', 
-                            'specialist', 'consultant', 'director', 'lead', 'senior']
-            if any(indicator in line.lower() for indicator in job_indicators):
-                return line
-    
-    return "Software Engineer Position"
-
-def calculate_job_match_score(resume_skills, job_skills, resume_text="", job_text=""):
-    """Calculate match percentage between resume and job description"""
-    
-    # Convert to sets for easier comparison
-    resume_skills_set = set([s.lower() for s in resume_skills])
-    job_skills_set = set([s.lower() for s in job_skills])
-    
-    # Calculate skill match
-    if len(job_skills_set) > 0:
-        matched_skills = resume_skills_set.intersection(job_skills_set)
-        missing_skills = job_skills_set - resume_skills_set
-        skill_match_percentage = (len(matched_skills) / len(job_skills_set)) * 100
-    else:
-        matched_skills = set()
-        missing_skills = set()
-        skill_match_percentage = 60
-    
-    # Extract experience
-    resume_exp = extract_experience_from_resume(resume_text)
-    job_exp_req = extract_experience_requirement(job_text)
-    
-    # Calculate experience match
-    if job_exp_req > 0:
-        if resume_exp >= job_exp_req:
-            exp_match = 100
-        elif resume_exp >= job_exp_req * 0.7:
-            exp_match = 70
-        else:
-            exp_match = 40
-    else:
-        exp_match = 80
-    
-    # Calculate overall score (70% skills, 30% experience)
-    overall_score = (skill_match_percentage * 0.7) + (exp_match * 0.3)
-    overall_score = round(overall_score, 2)
-    
-    # Categorize match level
-    if overall_score >= 80:
-        match_level = "Excellent Match"
-    elif overall_score >= 60:
-        match_level = "Good Match"
-    elif overall_score >= 40:
-        match_level = "Fair Match"
-    else:
-        match_level = "Needs Improvement"
-    
-    return {
-        'overall_score': overall_score,
-        'match_level': match_level,
-        'skill_match': round(skill_match_percentage, 2),
-        'experience_match': exp_match,
-        'matched_skills': sorted([s.capitalize() for s in list(matched_skills)]),
-        'missing_skills': sorted([s.capitalize() for s in list(missing_skills)]),
-        'total_job_skills': len(job_skills_set),
-        'total_resume_skills': len(resume_skills_set),
-        'resume_experience': resume_exp,
-        'required_experience': job_exp_req
-    }
+        return f"Your skills in {', '.join(skills['all'][:3])} are valuable! Keep learning and networking."
 
 # --------------------------
 # ROUTES
 # --------------------------
-
 @app.route('/')
 def index():
-    """Home page - redirects to login"""
     if 'user_id' in session:
         return redirect(url_for('dashboard'))
     return redirect(url_for('login'))
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
-    """Login page"""
     if request.method == 'POST':
         email = request.form.get('email', '').strip()
         password = request.form.get('password', '').strip()
         
-        conn = get_db_connection()
-        user = conn.execute(
+        db = get_db()
+        user = db.execute(
             'SELECT * FROM users WHERE email = ? OR username = ?', 
             (email, email)
         ).fetchone()
-        conn.close()
+        db.close()
         
         if user and check_password_hash(user['password'], password):
             session['user_id'] = user['id']
             session['username'] = user['username']
-            session['email'] = user['email']
             session['full_name'] = user['full_name'] or user['username']
             
-            # Update last login
-            conn = get_db_connection()
-            conn.execute(
+            db = get_db()
+            db.execute(
                 'UPDATE users SET last_login = CURRENT_TIMESTAMP WHERE id = ?',
                 (user['id'],)
             )
-            conn.commit()
-            conn.close()
+            db.commit()
+            db.close()
             
             flash('Login successful!', 'success')
             return redirect(url_for('dashboard'))
         else:
-            flash('Invalid email/username or password', 'error')
+            flash('Invalid credentials', 'error')
     
     return render_template('login.html')
 
 @app.route('/register', methods=['GET', 'POST'])
 def register():
-    """Registration page"""
     if request.method == 'POST':
         email = request.form.get('email', '').strip()
         username = request.form.get('username', '').strip()
@@ -870,36 +1016,33 @@ def register():
         full_name = request.form.get('full_name', '').strip()
         
         if not all([email, username, password]):
-            flash('All fields are required', 'error')
+            flash('All fields required', 'error')
             return render_template('register.html')
         
-        conn = get_db_connection()
-        existing = conn.execute(
+        db = get_db()
+        existing = db.execute(
             'SELECT * FROM users WHERE email = ? OR username = ?', 
             (email, username)
         ).fetchone()
         
         if existing:
-            conn.close()
+            db.close()
             flash('Email or username already exists', 'error')
             return render_template('register.html')
         
         password_hash = generate_password_hash(password)
-        conn.execute(
+        db.execute(
             'INSERT INTO users (email, username, password, full_name) VALUES (?, ?, ?, ?)',
             (email, username, password_hash, full_name)
         )
-        conn.commit()
+        db.commit()
         
-        user = conn.execute(
-            'SELECT * FROM users WHERE email = ?', (email,)
-        ).fetchone()
-        conn.close()
+        user = db.execute('SELECT * FROM users WHERE email = ?', (email,)).fetchone()
+        db.close()
         
         if user:
             session['user_id'] = user['id']
             session['username'] = user['username']
-            session['email'] = user['email']
             session['full_name'] = user['full_name'] or user['username']
             flash('Registration successful!', 'success')
             return redirect(url_for('dashboard'))
@@ -908,399 +1051,242 @@ def register():
 
 @app.route('/logout')
 def logout():
-    """Logout user"""
     session.clear()
-    flash('You have been logged out', 'info')
+    flash('Logged out', 'info')
     return redirect(url_for('login'))
 
 @app.route('/dashboard')
 @login_required
 def dashboard():
-    """Main dashboard"""
-    from datetime import datetime
-    
     user_data = {
         'username': session.get('username', 'User'),
-        'full_name': session.get('full_name', 'User'),
-        'email': session.get('email', '')
+        'full_name': session.get('full_name', 'User')
     }
     
-    # Get user's recent uploads
-    conn = get_db_connection()
-    recent_uploads = conn.execute(
-        'SELECT * FROM user_uploads WHERE user_id = ? ORDER BY upload_time DESC LIMIT 3',
+    db = get_db()
+    recent = db.execute(
+        'SELECT id, filename, upload_time FROM user_uploads WHERE user_id = ? ORDER BY upload_time DESC LIMIT 3',
         (session['user_id'],)
     ).fetchall()
+    db.close()
     
-    # Get job match history
-    match_history = conn.execute(
-        'SELECT * FROM job_matches WHERE user_id = ? ORDER BY created_at DESC LIMIT 3',
-        (session['user_id'],)
-    ).fetchall()
-    conn.close()
+    recent_uploads = [dict(r) for r in recent]
     
-    # Convert to list of dictionaries
-    uploads_list = []
-    for upload in recent_uploads:
-        upload_dict = dict(upload)
-        try:
-            if upload_dict.get('skills'):
-                upload_dict['skills_parsed'] = json.loads(upload_dict['skills'])[:5]
-            if upload_dict.get('top_roles'):
-                upload_dict['roles_parsed'] = json.loads(upload_dict['top_roles'])[:3]
-        except:
-            pass
-        uploads_list.append(upload_dict)
+    skills = ['Python', 'JavaScript', 'SQL', 'Communication']
+    top_roles = [['Software Engineer', 92], ['Data Scientist', 88], ['DevOps Engineer', 85]]
+    jobs = get_jobs_for_role('Software Engineer')
+    courses = recommend_courses({'all': skills})
     
-    matches_list = [dict(match) for match in match_history]
-    
-    # Default data
-    skills = ['Python', 'JavaScript', 'SQL', 'Communication', 'Problem Solving']
-    top_roles = [
-        ['Software Engineer', 92],
-        ['Data Scientist', 88],
-        ['DevOps Engineer', 85],
-        ['Full Stack Developer', 82],
-        ['Backend Developer', 80]
-    ]
-    
-    primary_role = top_roles[0][0] if top_roles else "Software Engineer"
-    jobs = get_jobs_for_role(primary_role)
-    courses = recommend_courses(skills)
-    
-    ai_response = "Your resume analysis is ready! Based on your skills, you're well-positioned for roles in software development."
-    filename = None
-    show_results = False
-    
-    if uploads_list:
-        latest_upload = uploads_list[0]
-        filename = latest_upload['filename']
-        show_results = True
-        
-        try:
-            if latest_upload.get('skills'):
-                parsed_skills = json.loads(latest_upload['skills'])
-                if parsed_skills:
-                    skills = parsed_skills
-            if latest_upload.get('top_roles'):
-                parsed_roles = json.loads(latest_upload['top_roles'])
-                if parsed_roles:
-                    top_roles = parsed_roles
-                    primary_role = top_roles[0][0] if top_roles else "Software Engineer"
-                    jobs = get_jobs_for_role(primary_role)
-            if latest_upload.get('courses'):
-                parsed_courses = json.loads(latest_upload['courses'])
-                if parsed_courses:
-                    courses = parsed_courses
-            if latest_upload.get('ai_response'):
-                ai_response = latest_upload['ai_response']
-        except Exception as e:
-            print(f"Error parsing upload data: {e}")
-    
-    return render_template('index.html', 
+    return render_template('index.html',
                           user=user_data,
-                          recent_uploads=uploads_list,
-                          match_history=matches_list,
-                          skills=skills, 
-                          top_roles=top_roles, 
-                          jobs=jobs, 
+                          recent_uploads=recent_uploads,
+                          skills=skills,
+                          top_roles=top_roles,
+                          jobs=jobs,
                           courses=courses,
-                          filename=filename,
-                          ai_response=ai_response,
-                          show_results=show_results,
-                          lm_available=LM_AVAILABLE,
-                          now=datetime.now)
+                          show_results=False,
+                          now=datetime.now())
 
 @app.route('/analyze', methods=['POST'])
 @login_required
 def analyze():
-    """Enhanced analyze resume endpoint"""
-    print("📤 Received analyze request")
-    
+    """Fast resume analysis with comprehensive parsing"""
     try:
         if 'resume_file' not in request.files:
             flash('No file selected', 'error')
             return redirect(url_for('dashboard'))
         
         file = request.files['resume_file']
-        
         if file.filename == '':
             flash('No file selected', 'error')
             return redirect(url_for('dashboard'))
         
         if not allowed_file(file.filename):
-            flash('Invalid file type. Please upload PDF, DOC, DOCX, or TXT.', 'error')
+            flash('Invalid file type', 'error')
             return redirect(url_for('dashboard'))
         
+        # Save file
         filename = secure_filename(file.filename)
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         filename = f"{timestamp}_{filename}"
         filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
         file.save(filepath)
         
+        # Extract text
         resume_text = extract_text_from_pdf(filepath)
-        extracted_skills = extract_skills_from_text(resume_text)
-        top_roles = predict_top_roles(extracted_skills)
-        primary_role = top_roles[0][0] if top_roles else "Software Developer"
+        
+        # Extract all information in parallel
+        with ThreadPoolExecutor(max_workers=3) as executor:
+            contact_future = executor.submit(extract_contact_info, resume_text)
+            education_future = executor.submit(extract_education, resume_text)
+            experience_future = executor.submit(extract_experience_summary, resume_text)
+            skills_future = executor.submit(extract_skills_from_text, resume_text)
+            
+            contact_info = contact_future.result()
+            education = education_future.result()
+            experience = experience_future.result()
+            skills_result = skills_future.result()
+        
+        # Predict roles based on extracted skills
+        top_roles = predict_top_roles(skills_result)
+        
+        # Get jobs and courses
+        primary_role = top_roles[0][0] if top_roles else "Software Engineer"
         jobs = get_jobs_for_role(primary_role)
-        courses = recommend_courses(extracted_skills, use_llm=True)
+        courses = recommend_courses(skills_result)
         
-        custom_query = request.form.get('custom_query', '').strip()
-        if custom_query:
-            ai_response = ai_answer_query(custom_query, extracted_skills)
-        else:
-            ai_response = "Your resume has been analyzed successfully!"
-        
-        conn = get_db_connection()
-        cur = conn.execute('''
-            INSERT INTO user_uploads (user_id, filename, filepath, skills, top_roles, jobs, courses, ai_response, analysis_version)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        # Save to database
+        db = get_db()
+        cursor = db.execute('''
+            INSERT INTO user_uploads 
+            (user_id, filename, filepath, skills, top_roles, jobs, courses, contact_info, education, experience)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ''', (
             session['user_id'],
             filename,
             filepath,
-            json.dumps(extracted_skills),
+            json.dumps(skills_result['all']),
             json.dumps(top_roles),
             json.dumps(jobs),
             json.dumps(courses),
-            ai_response,
-            "2.0"
+            json.dumps(contact_info),
+            json.dumps(education),
+            json.dumps(experience)
         ))
-        conn.commit()
-        new_upload_id = cur.lastrowid
-        conn.close()
+        db.commit()
+        upload_id = cursor.lastrowid
+        db.close()
         
-        flash('Resume analyzed successfully!', 'success')
-        return redirect(url_for('view_upload', upload_id=new_upload_id))
-    
+        flash('Analysis complete! Found {} skills'.format(len(skills_result['all'])), 'success')
+        return redirect(url_for('view_upload', upload_id=upload_id))
+        
     except Exception as e:
-        print(f"❌ Analysis error: {str(e)}")
-        traceback.print_exc()
-        flash(f'Analysis failed: {str(e)}', 'error')
+        logger.error(f"Analysis error: {e}")
+        flash('Analysis failed', 'error')
         return redirect(url_for('dashboard'))
-
-@app.route('/chat', methods=['POST'])
-@login_required
-def chat():
-    """Enhanced chatbot endpoint"""
-    try:
-        data = request.get_json()
-        if not data:
-            return jsonify({'error': 'No data provided'}), 400
-            
-        user_message = data.get('message', '').strip()
-        
-        if not user_message:
-            return jsonify({'error': 'Empty message'}), 400
-        
-        print(f"💬 Chat request: {user_message[:50]}...")
-        
-        # Get user's skills for context
-        try:
-            conn = get_db_connection()
-            latest_upload = conn.execute(
-                'SELECT skills FROM user_uploads WHERE user_id = ? ORDER BY upload_time DESC LIMIT 1',
-                (session['user_id'],)
-            ).fetchone()
-            conn.close()
-            
-            skills = []
-            if latest_upload and latest_upload['skills']:
-                try:
-                    skills = json.loads(latest_upload['skills'])
-                except:
-                    skills = []
-        except Exception as e:
-            print(f"Error fetching skills: {e}")
-            skills = []
-        
-        # Get response using enhanced function
-        start_time = time.time()
-        response = ai_answer_query(user_message, skills)
-        processing_time = time.time() - start_time
-        
-        print(f"✅ Chat response generated in {processing_time:.2f}s")
-        return jsonify({'response': response, 'lm_available': LM_AVAILABLE})
-        
-    except Exception as e:
-        print(f"❌ Chat error: {e}")
-        traceback.print_exc()
-        return jsonify({'response': 'I apologize, but I encountered an error. Please try again.'}), 500
-
-@app.route('/profile')
-@login_required
-def profile():
-    """User profile page"""
-    conn = get_db_connection()
-    user = conn.execute(
-        'SELECT * FROM users WHERE id = ?', 
-        (session['user_id'],)
-    ).fetchone()
-    
-    uploads = conn.execute(
-        'SELECT COUNT(*) as count FROM user_uploads WHERE user_id = ?',
-        (session['user_id'],)
-    ).fetchone()
-    
-    matches = conn.execute(
-        'SELECT COUNT(*) as count FROM job_matches WHERE user_id = ?',
-        (session['user_id'],)
-    ).fetchone()
-    
-    recent_uploads = conn.execute(
-        'SELECT * FROM user_uploads WHERE user_id = ? ORDER BY upload_time DESC LIMIT 5',
-        (session['user_id'],)
-    ).fetchall()
-    
-    conn.close()
-    
-    user_data = dict(user) if user else {}
-    uploads_list = [dict(upload) for upload in recent_uploads]
-    
-    return render_template('profile.html', 
-                          user=user_data,
-                          upload_count=uploads['count'] if uploads else 0,
-                          match_count=matches['count'] if matches else 0,
-                          recent_uploads=uploads_list)
-
-@app.route('/history')
-@login_required
-def history():
-    """Upload history"""
-    conn = get_db_connection()
-    uploads = conn.execute(
-        'SELECT * FROM user_uploads WHERE user_id = ? ORDER BY upload_time DESC',
-        (session['user_id'],)
-    ).fetchall()
-    conn.close()
-    
-    uploads_list = []
-    for upload in uploads:
-        upload_dict = dict(upload)
-        try:
-            if upload_dict.get('skills'):
-                upload_dict['skills_parsed'] = json.loads(upload_dict['skills'])[:5]
-            if upload_dict.get('top_roles'):
-                upload_dict['roles_parsed'] = json.loads(upload_dict['top_roles'])[:3]
-        except:
-            pass
-        uploads_list.append(upload_dict)
-    
-    return render_template('history.html', uploads=uploads_list)
 
 @app.route('/view/<int:upload_id>')
 @login_required
 def view_upload(upload_id):
-    """View specific upload analysis"""
-    from datetime import datetime
-    
-    conn = get_db_connection()
-    user = conn.execute('SELECT * FROM users WHERE id = ?', (session['user_id'],)).fetchone()
-    upload = conn.execute('SELECT * FROM user_uploads WHERE id = ? AND user_id = ?', (upload_id, session['user_id'])).fetchone()
-    recent_uploads = conn.execute('SELECT * FROM user_uploads WHERE user_id = ? ORDER BY upload_time DESC LIMIT 3', (session['user_id'],)).fetchall()
-    conn.close()
-    
-    user_data = dict(user) if user else {}
-    uploads_list = [dict(u) for u in recent_uploads]
-    
-    skills = []
-    top_roles = []
-    jobs = []
-    courses = []
-    ai_response = ""
-    filename = None
-    show_results = False
-    
-    if upload:
-        up = dict(upload)
-        filename = up.get('filename')
-        show_results = True
-        
-        try:
-            if up.get('skills'):
-                skills = json.loads(up['skills'])
-            if up.get('top_roles'):
-                top_roles = json.loads(up['top_roles'])
-                if top_roles:
-                    primary_role = top_roles[0][0] if top_roles else "Software Engineer"
-                    jobs = get_jobs_for_role(primary_role)
-            if up.get('courses'):
-                courses = json.loads(up['courses'])
-            if up.get('ai_response'):
-                ai_response = up['ai_response']
-        except Exception as e:
-            print(f"Error parsing upload data: {e}")
-    
-    if not jobs:
-        jobs = get_jobs_for_role("Software Engineer")
-    
-    return render_template('index.html',
-                          user=user_data,
-                          recent_uploads=uploads_list,
-                          skills=skills,
-                          top_roles=top_roles,
-                          jobs=jobs,
-                          courses=courses,
-                          filename=filename,
-                          ai_response=ai_response,
-                          show_results=show_results,
-                          lm_available=LM_AVAILABLE,
-                          now=datetime.now)
-
-@app.route('/reanalyze/<int:upload_id>')
-@login_required
-def reanalyze_upload(upload_id):
-    """Re-analyze an existing upload"""
-    conn = get_db_connection()
-    upload = conn.execute('SELECT * FROM user_uploads WHERE id = ? AND user_id = ?', (upload_id, session['user_id'])).fetchone()
-    conn.close()
+    db = get_db()
+    upload = db.execute(
+        'SELECT * FROM user_uploads WHERE id = ? AND user_id = ?',
+        (upload_id, session['user_id'])
+    ).fetchone()
+    db.close()
     
     if not upload:
         flash('Upload not found', 'error')
         return redirect(url_for('dashboard'))
     
-    filepath = upload['filepath']
+    # Parse data
+    skills = json.loads(upload['skills']) if upload['skills'] else []
+    top_roles = json.loads(upload['top_roles']) if upload['top_roles'] else []
+    jobs = json.loads(upload['jobs']) if upload['jobs'] else []
+    courses = json.loads(upload['courses']) if upload['courses'] else []
+    contact_info = json.loads(upload['contact_info']) if upload['contact_info'] else {}
+    education = json.loads(upload['education']) if upload['education'] else []
+    experience = json.loads(upload['experience']) if upload['experience'] else []
     
+    user_data = {
+        'username': session.get('username', 'User'),
+        'full_name': session.get('full_name', 'User')
+    }
+    
+    return render_template('index.html',
+                          user=user_data,
+                          skills=skills,
+                          top_roles=top_roles,
+                          jobs=jobs,
+                          courses=courses,
+                          contact_info=contact_info,
+                          education=education,
+                          experience=experience,
+                          filename=upload['filename'],
+                          show_results=True,
+                          now=datetime.now())
+
+@app.route('/profile')
+@login_required
+def profile():
+    db = get_db()
+    user = db.execute('SELECT * FROM users WHERE id = ?', (session['user_id'],)).fetchone()
+    
+    uploads = db.execute(
+        'SELECT COUNT(*) as count FROM user_uploads WHERE user_id = ?',
+        (session['user_id'],)
+    ).fetchone()
+    
+    recent = db.execute(
+        'SELECT * FROM user_uploads WHERE user_id = ? ORDER BY upload_time DESC LIMIT 5',
+        (session['user_id'],)
+    ).fetchall()
+    db.close()
+    
+    user_data = dict(user) if user else {}
+    uploads_list = [dict(u) for u in recent]
+    
+    return render_template('profile.html', 
+                          user=user_data,
+                          upload_count=uploads['count'] if uploads else 0,
+                          recent_uploads=uploads_list)
+
+@app.route('/history')
+@login_required
+def history():
+    """Upload history page - Simplified version"""
     try:
-        resume_text = extract_text_from_pdf(filepath)
-        extracted_skills = extract_skills_from_text(resume_text)
-        top_roles = predict_top_roles(extracted_skills)
-        primary_role = top_roles[0][0] if top_roles else "Software Developer"
-        jobs = get_jobs_for_role(primary_role)
-        courses = recommend_courses(extracted_skills, use_llm=True)
-        ai_response = "Re-analysis completed with enhanced algorithms."
+        db = get_db()
         
-        conn = get_db_connection()
-        conn.execute('''
-            UPDATE user_uploads 
-            SET skills=?, top_roles=?, jobs=?, courses=?, ai_response=?, analysis_version='2.0'
-            WHERE id=?
-        ''', (
-            json.dumps(extracted_skills), 
-            json.dumps(top_roles), 
-            json.dumps(jobs), 
-            json.dumps(courses), 
-            ai_response, 
-            upload_id
-        ))
-        conn.commit()
-        conn.close()
+        # Simple query with only essential columns
+        uploads = db.execute(
+            'SELECT id, filename, upload_time FROM user_uploads WHERE user_id = ? ORDER BY upload_time DESC',
+            (session['user_id'],)
+        ).fetchall()
+        db.close()
         
-        flash('Re-analysis completed successfully!', 'success')
-        return redirect(url_for('view_upload', upload_id=upload_id))
+        # Convert to list of dictionaries
+        uploads_list = []
+        for upload in uploads:
+            uploads_list.append({
+                'id': upload['id'],
+                'filename': upload['filename'],
+                'upload_time': upload['upload_time'],
+                'skills_parsed': ['Python', 'JavaScript'],  # Placeholder
+                'roles_parsed': [['Software Engineer', 85]]  # Placeholder
+            })
+        
+        user_data = {
+            'username': session.get('username', 'User'),
+            'full_name': session.get('full_name', 'User')
+        }
+        
+        return render_template('history.html', 
+                             user=user_data,
+                             uploads=uploads_list)
         
     except Exception as e:
-        flash(f'Re-analysis failed: {str(e)}', 'error')
-        return redirect(url_for('dashboard'))
+        print(f"History error: {e}")
+        import traceback
+        traceback.print_exc()
+        
+        # Return empty list instead of redirecting
+        user_data = {
+            'username': session.get('username', 'User'),
+            'full_name': session.get('full_name', 'User')
+        }
+        return render_template('history.html', 
+                             user=user_data,
+                             uploads=[])
 
 @app.route('/job-match', methods=['GET', 'POST'])
 @login_required
 def job_match():
-    """Enhanced job matching page"""
+    """Job matching page - compare resume with job description"""
     if request.method == 'POST':
         try:
             if 'resume_file' not in request.files or 'job_file' not in request.files:
-                flash('Please upload both resume and job description files', 'error')
+                flash('Please upload both files', 'error')
                 return redirect(url_for('job_match'))
             
             resume_file = request.files['resume_file']
@@ -1310,215 +1296,189 @@ def job_match():
                 flash('Please select both files', 'error')
                 return redirect(url_for('job_match'))
             
-            if not allowed_file(resume_file.filename) or not allowed_file(job_file.filename):
-                flash('Invalid file type. Please upload PDF, DOC, DOCX, or TXT files.', 'error')
-                return redirect(url_for('job_match'))
-            
-            # Save files
+            # Save files temporarily
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             
+            # Save resume
             resume_filename = secure_filename(resume_file.filename)
-            resume_filename = f"resume_{timestamp}_{resume_filename}"
+            resume_filename = f"match_resume_{timestamp}_{resume_filename}"
             resume_filepath = os.path.join(app.config['UPLOAD_FOLDER'], resume_filename)
             resume_file.save(resume_filepath)
             
+            # Save job description
             job_filename = secure_filename(job_file.filename)
-            job_filename = f"job_{timestamp}_{job_filename}"
+            job_filename = f"match_job_{timestamp}_{job_filename}"
             job_filepath = os.path.join(app.config['UPLOAD_FOLDER'], job_filename)
             job_file.save(job_filepath)
             
-            # Extract and analyze
+            # Extract text from both files
             resume_text = extract_text_from_pdf(resume_filepath)
             job_text = extract_text_from_pdf(job_filepath)
             
-            resume_skills = extract_skills_from_text(resume_text)
-            job_skills = extract_skills_from_job_description(job_text)
+            # Clean up temp files
+            try:
+                os.remove(resume_filepath)
+                os.remove(job_filepath)
+            except:
+                pass
             
-            match_results = calculate_job_match_score(resume_skills, job_skills, resume_text, job_text)
-            job_title = extract_job_title(job_text)
+            if not resume_text or not job_text:
+                flash('Could not extract text from files', 'error')
+                return redirect(url_for('job_match'))
             
-            # Save to database
-            conn = get_db_connection()
-            conn.execute('''
-                INSERT INTO job_matches (user_id, job_title, match_score, matched_skills, missing_skills)
-                VALUES (?, ?, ?, ?, ?)
-            ''', (
-                session['user_id'],
-                job_title,
-                match_results['overall_score'],
-                json.dumps(match_results['matched_skills']),
-                json.dumps(match_results['missing_skills'])
-            ))
-            conn.commit()
-            conn.close()
+            # Extract skills
+            resume_skills_result = extract_skills_from_text(resume_text)
+            job_skills_result = extract_skills_from_text(job_text)
+            
+            resume_skills = resume_skills_result['all']
+            job_skills = job_skills_result['all']
+            
+            # Calculate match score
+            if not job_skills:
+                match_score = 70
+                matched_skills = resume_skills[:5]
+                missing_skills = []
+            else:
+                resume_set = set([s.lower() for s in resume_skills])
+                job_set = set([s.lower() for s in job_skills])
+                
+                matched = list(resume_set.intersection(job_set))
+                missing = list(job_set - resume_set)
+                
+                match_score = int((len(matched) / len(job_set)) * 100) if job_set else 70
+                match_score = min(98, max(30, match_score))
+            
+            # Create match_results dictionary (what your template expects)
+            match_results = {
+                'overall_score': match_score,
+                'match_level': 'Excellent Match' if match_score >= 80 else 'Good Match' if match_score >= 60 else 'Fair Match' if match_score >= 40 else 'Needs Improvement',
+                'skill_match': match_score,
+                'experience_match': 80,  # Default value
+                'matched_skills': [s.title() for s in matched[:15]],
+                'missing_skills': [s.title() for s in missing[:15]],
+                'total_job_skills': len(job_set),
+                'total_resume_skills': len(resume_set),
+                'resume_experience': 3,  # Default value
+                'required_experience': 2  # Default value
+            }
             
             return render_template('job_match_results.html',
-                                 user={'username': session.get('username', 'User')},
-                                 job_title=job_title,
                                  match_results=match_results,
-                                 resume_skills=resume_skills,
-                                 job_skills=job_skills,
-                                 lm_available=LM_AVAILABLE)
+                                 job_title="Job Position",
+                                 resume_skills=resume_skills[:15],
+                                 job_skills=job_skills[:15])
             
         except Exception as e:
-            print(f"❌ Job match error: {str(e)}")
+            logger.error(f"Job match error: {e}")
             traceback.print_exc()
-            flash(f'Job matching failed: {str(e)}', 'error')
+            flash(f'Job match failed: {str(e)}', 'error')
             return redirect(url_for('job_match'))
     
     return render_template('job_match.html', user={'username': session.get('username', 'User')})
+@app.route('/test-upload')
+@login_required
+def test_upload():
+    """Test endpoint for quick demo"""
+    test_skills = ['Python', 'JavaScript', 'React', 'Node.js', 'MongoDB', 'AWS', 'Docker', 'Git']
+    test_roles = [['Full Stack Developer', 92], ['Software Engineer', 88], ['DevOps Engineer', 85]]
+    test_jobs = get_jobs_for_role('Software Engineer')
+    test_courses = recommend_courses({'all': test_skills})
+    
+    user_data = {
+        'username': session.get('username', 'User'),
+        'full_name': session.get('full_name', 'User')
+    }
+    
+    return render_template('index.html',
+                          user=user_data,
+                          skills=test_skills,
+                          top_roles=test_roles,
+                          jobs=test_jobs,
+                          courses=test_courses,
+                          filename="test_resume.pdf",
+                          contact_info={'name': 'John Doe', 'email': 'john@example.com'},
+                          education=['BS Computer Science'],
+                          experience=['Software Engineer at Tech Corp'],
+                          show_results=True,
+                          now=datetime.now())
+
+@app.route('/chat', methods=['POST'])
+@login_required
+def chat():
+    try:
+        data = request.get_json()
+        user_message = data.get('message', '')
+        
+        # Get user's skills
+        db = get_db()
+        latest = db.execute(
+            'SELECT skills FROM user_uploads WHERE user_id = ? ORDER BY upload_time DESC LIMIT 1',
+            (session['user_id'],)
+        ).fetchone()
+        db.close()
+        
+        skills = json.loads(latest['skills']) if latest and latest['skills'] else []
+        
+        response = ai_answer_query(user_message, {'all': skills})
+        
+        return jsonify({'response': response})
+    except Exception as e:
+        return jsonify({'response': 'Sorry, I encountered an error.'})
 
 @app.route('/quick-actions', methods=['POST'])
 @login_required
 def quick_actions():
-    """Quick actions endpoint for common operations"""
     try:
         data = request.get_json()
-        action = data.get('action', '')
+        action = data.get('action')
         
         if action == 'refresh_jobs':
-            conn = get_db_connection()
-            latest_upload = conn.execute(
+            db = get_db()
+            latest = db.execute(
                 'SELECT top_roles FROM user_uploads WHERE user_id = ? ORDER BY upload_time DESC LIMIT 1',
                 (session['user_id'],)
             ).fetchone()
-            conn.close()
+            db.close()
             
-            if latest_upload and latest_upload['top_roles']:
-                top_roles = json.loads(latest_upload['top_roles'])
-                primary_role = top_roles[0][0] if top_roles else "Software Engineer"
-                jobs = get_jobs_for_role(primary_role)
+            if latest and latest['top_roles']:
+                top_roles = json.loads(latest['top_roles'])
+                role = top_roles[0][0] if top_roles else "Software Engineer"
+                jobs = get_jobs_for_role(role)
                 return jsonify({'success': True, 'jobs': jobs})
         
         elif action == 'get_career_advice':
-            conn = get_db_connection()
-            latest_upload = conn.execute(
-                'SELECT skills FROM user_uploads WHERE user_id = ? ORDER BY upload_time DESC LIMIT 1',
-                (session['user_id'],)
-            ).fetchone()
-            conn.close()
-            
-            skills = []
-            if latest_upload and latest_upload['skills']:
-                skills = json.loads(latest_upload['skills'])
-            
-            advice = ai_answer_query("What career advice do you have for me?", skills)
-            return jsonify({'success': True, 'advice': advice})
+            return jsonify({
+                'success': True,
+                'advice': "Keep learning and building projects. Network on LinkedIn."
+            })
         
         elif action == 'recommend_courses_quick':
-            conn = get_db_connection()
-            latest_upload = conn.execute(
-                'SELECT skills FROM user_uploads WHERE user_id = ? ORDER BY upload_time DESC LIMIT 1',
-                (session['user_id'],)
-            ).fetchone()
-            conn.close()
-            
-            skills = []
-            if latest_upload and latest_upload['skills']:
-                skills = json.loads(latest_upload['skills'])
-            
-            courses = recommend_courses(skills, use_llm=True)
-            return jsonify({'success': True, 'courses': courses})
+            return jsonify({
+                'success': True,
+                'courses': [('Python', 'Python for Everybody'), ('JavaScript', 'Modern JavaScript')]
+            })
         
-        return jsonify({'success': False, 'error': 'Invalid action'}), 400
-        
+        return jsonify({'success': False})
     except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 500
-
-@app.route('/test-upload', methods=['GET'])
-@login_required
-def test_upload():
-    """Test endpoint to simulate file upload"""
-    try:
-        test_content = """
-        JOHN DOE - Senior Software Engineer
-        Email: john.doe@email.com | Phone: (555) 123-4567
-        
-        SKILLS
-        • Programming: Python, JavaScript, Java, TypeScript
-        • Web Frameworks: Django, Flask, React, Node.js
-        • Databases: PostgreSQL, MongoDB, MySQL
-        • Cloud & DevOps: AWS, Docker, Kubernetes, Jenkins
-        • Tools: Git, JIRA, VS Code
-        
-        WORK EXPERIENCE
-        Senior Software Engineer | TechCorp Inc. | 2020 - Present
-        Full Stack Developer | Startup Innovations | 2018 - 2020
-        
-        EDUCATION
-        BS Computer Science | University of Technology | 2014 - 2018
-        """
-        
-        test_filename = f"test_resume_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
-        test_filepath = os.path.join(app.config['UPLOAD_FOLDER'], test_filename)
-        
-        with open(test_filepath, 'w') as f:
-            f.write(test_content)
-        
-        resume_text = test_content
-        extracted_skills = extract_skills_from_text(resume_text)
-        top_roles = predict_top_roles(extracted_skills)
-        jobs = get_jobs_for_role(top_roles[0][0] if top_roles else "Software Developer")
-        courses = recommend_courses(extracted_skills, use_llm=True)
-        ai_response = "Test analysis completed with enhanced algorithms!"
-        
-        conn = get_db_connection()
-        cur = conn.execute('''
-            INSERT INTO user_uploads (user_id, filename, filepath, skills, top_roles, jobs, courses, ai_response, analysis_version)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-        ''', (
-            session['user_id'],
-            test_filename,
-            test_filepath,
-            json.dumps(extracted_skills),
-            json.dumps(top_roles),
-            json.dumps(jobs),
-            json.dumps(courses),
-            ai_response,
-            "2.0"
-        ))
-        conn.commit()
-        new_upload_id = cur.lastrowid
-        conn.close()
-        
-        flash('Test analysis completed!', 'success')
-        return redirect(url_for('view_upload', upload_id=new_upload_id))
-        
-    except Exception as e:
-        print(f"❌ Test upload failed: {e}")
-        flash(f'Test failed: {str(e)}', 'error')
-        return redirect(url_for('dashboard'))
+        return jsonify({'success': False, 'error': str(e)})
 
 @app.route('/health')
 def health():
-    """Health check endpoint"""
-    return jsonify({
-        'status': 'healthy',
-        'service': 'Path Pilot Enhanced',
-        'version': '2.0.0',
-        'timestamp': datetime.now().isoformat(),
-        'lm_studio_available': LM_AVAILABLE,
-        'database': 'connected' if os.path.exists(app.config['DATABASE']) else 'disconnected'
-    })
+    return jsonify({'status': 'healthy', 'time': datetime.now().isoformat()})
 
 @app.route('/debug')
 @login_required
 def debug():
-    """Debug endpoint"""
-    conn = get_db_connection()
-    uploads_count = conn.execute('SELECT COUNT(*) as c FROM user_uploads WHERE user_id = ?', (session['user_id'],)).fetchone()
-    matches_count = conn.execute('SELECT COUNT(*) as c FROM job_matches WHERE user_id = ?', (session['user_id'],)).fetchone()
-    conn.close()
+    db = get_db()
+    uploads_count = db.execute('SELECT COUNT(*) as c FROM user_uploads WHERE user_id = ?', (session['user_id'],)).fetchone()
+    db.close()
     
-    debug_info = {
+    return jsonify({
         'session': dict(session),
         'user_id': session.get('user_id'),
         'username': session.get('username'),
-        'user_uploads_count': uploads_count['c'] if uploads_count else 0,
-        'job_matches_count': matches_count['c'] if matches_count else 0,
-        'lm_studio_available': LM_AVAILABLE
-    }
-    return jsonify(debug_info)
+        'uploads_count': uploads_count['c'] if uploads_count else 0
+    })
 
 @app.errorhandler(404)
 def not_found(error):
@@ -1526,23 +1486,20 @@ def not_found(error):
 
 @app.errorhandler(500)
 def internal_error(error):
-    return render_template('error.html', error='Internal server error'), 500
+    return render_template('error.html', error='Server error'), 500
 
 # --------------------------
 # START APPLICATION
 # --------------------------
 if __name__ == '__main__':
+    print("\n" + "=" * 60)
+    print("✅ SkillSense Enhanced - Ready!")
     print("=" * 60)
-    print("🚀 Path Pilot Enhanced Backend v2.0")
-    print("=" * 60)
-    print(f"📁 Upload folder: {app.config['UPLOAD_FOLDER']}")
-    print(f"📊 Database: {app.config['DATABASE']}")
-    print(f"🤖 LM Studio: {'✅ Available' if LM_AVAILABLE else '⚠️ Not Available'}")
-    print("-" * 60)
-    print(f"🌐 Login URL: http://localhost:5000/login")
-    print(f"👤 Default admin: admin@skillsense.com / admin123")
-    print(f"🤝 Job Match: http://localhost:5000/job-match")
-    print("=" * 60)
+    print("🌐 URL: http://localhost:5000")
+    print("👤 Admin: admin@skillsense.com / admin123")
+    print("📁 Upload folder:", app.config['UPLOAD_FOLDER'])
+    print("💾 Database:", app.config['DATABASE'])
+    print("=" * 60 + "\n")
     
     app.run(
         debug=True,

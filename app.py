@@ -15,7 +15,7 @@ import random
 import re
 import threading
 from concurrent.futures import ThreadPoolExecutor
-
+from resume_parser import parse_resume, match_resume_to_job, extract_text_from_file
 print("🚀 Starting SkillSense Backend with Enhanced Processing...")
 
 # Configure logging
@@ -1234,66 +1234,63 @@ def profile():
 @app.route('/history')
 @login_required
 def history():
-    """Upload history page - Simplified version"""
-    try:
-        db = get_db()
-        
-        # Simple query with only essential columns
-        uploads = db.execute(
-            'SELECT id, filename, upload_time FROM user_uploads WHERE user_id = ? ORDER BY upload_time DESC',
-            (session['user_id'],)
-        ).fetchall()
-        db.close()
-        
-        # Convert to list of dictionaries
-        uploads_list = []
-        for upload in uploads:
-            uploads_list.append({
-                'id': upload['id'],
-                'filename': upload['filename'],
-                'upload_time': upload['upload_time'],
-                'skills_parsed': ['Python', 'JavaScript'],  # Placeholder
-                'roles_parsed': [['Software Engineer', 85]]  # Placeholder
-            })
-        
-        user_data = {
-            'username': session.get('username', 'User'),
-            'full_name': session.get('full_name', 'User')
-        }
-        
-        return render_template('history.html', 
-                             user=user_data,
-                             uploads=uploads_list)
-        
-    except Exception as e:
-        print(f"History error: {e}")
-        import traceback
-        traceback.print_exc()
-        
-        # Return empty list instead of redirecting
-        user_data = {
-            'username': session.get('username', 'User'),
-            'full_name': session.get('full_name', 'User')
-        }
-        return render_template('history.html', 
-                             user=user_data,
-                             uploads=[])
+    """Upload history"""
+    conn = get_db_connection()
+    uploads = conn.execute(
+        'SELECT * FROM user_uploads WHERE user_id = ? ORDER BY upload_time DESC',
+        (session['user_id'],)
+    ).fetchall()
+    conn.close()
+    
+    uploads_list = []
+    for upload in uploads:
+        upload_dict = dict(upload)
+        # Try to parse JSON data
+        try:
+            if upload_dict.get('skills'):
+                upload_dict['skills_parsed'] = json.loads(upload_dict['skills'])[:5]
+            if upload_dict.get('top_roles'):
+                upload_dict['roles_parsed'] = json.loads(upload_dict['top_roles'])[:3]
+        except:
+            pass
+        uploads_list.append(upload_dict)
+    
+    return render_template('history.html', uploads=uploads_list)
+# Add both functions if neither exists
+def get_db():
+    """Get database connection"""
+    import sqlite3
+    conn = sqlite3.connect('database.db')
+    conn.row_factory = sqlite3.Row
+    return conn
 
+def get_db_connection():
+    """Get database connection - alias for get_db for compatibility"""
+    return get_db()
 @app.route('/job-match', methods=['GET', 'POST'])
 @login_required
 def job_match():
-    """Job matching page - compare resume with job description"""
+    """Professional job matching using your resume_parser.py"""
     if request.method == 'POST':
         try:
-            if 'resume_file' not in request.files or 'job_file' not in request.files:
-                flash('Please upload both files', 'error')
+            # Check if both files are uploaded
+            if 'resume_file' not in request.files:
+                flash('Please upload your resume file', 'error')
+                return redirect(url_for('job_match'))
+            
+            if 'job_file' not in request.files:
+                flash('Please upload job description file', 'error')
                 return redirect(url_for('job_match'))
             
             resume_file = request.files['resume_file']
             job_file = request.files['job_file']
             
-            if resume_file.filename == '' or job_file.filename == '':
-                flash('Please select both files', 'error')
+            if resume_file.filename == '':
+                flash('Please select a resume file', 'error')
+                return redirect(url_for('job_match'))
+            
+            if job_file.filename == '':
+                flash('Please select a job description file', 'error')
                 return redirect(url_for('job_match'))
             
             # Save files temporarily
@@ -1301,19 +1298,39 @@ def job_match():
             
             # Save resume
             resume_filename = secure_filename(resume_file.filename)
-            resume_filename = f"match_resume_{timestamp}_{resume_filename}"
-            resume_filepath = os.path.join(app.config['UPLOAD_FOLDER'], resume_filename)
+            resume_filepath = os.path.join(app.config['UPLOAD_FOLDER'], f"match_resume_{timestamp}_{resume_filename}")
             resume_file.save(resume_filepath)
             
             # Save job description
             job_filename = secure_filename(job_file.filename)
-            job_filename = f"match_job_{timestamp}_{job_filename}"
-            job_filepath = os.path.join(app.config['UPLOAD_FOLDER'], job_filename)
+            job_filepath = os.path.join(app.config['UPLOAD_FOLDER'], f"match_job_{timestamp}_{job_filename}")
             job_file.save(job_filepath)
             
-            # Extract text from both files
-            resume_text = extract_text_from_pdf(resume_filepath)
-            job_text = extract_text_from_pdf(job_filepath)
+            # ========== USE YOUR RESUME_PARSER ==========
+            from resume_parser import parse_resume, extract_text_from_file, nlp, extract_skills_advanced
+            
+            # Parse resume using your function
+            resume_data = parse_resume(resume_filepath)
+            
+            if "error" in resume_data:
+                flash(f'Error parsing resume: {resume_data["error"]}', 'error')
+                return redirect(url_for('job_match'))
+            
+            # Get resume skills
+            resume_skills = resume_data.get('skills', {}).get('all_skills', [])
+            resume_experience = resume_data.get('experience', {}).get('total_years', 0)
+            
+            # Parse job description (extract text and skills)
+            job_text = extract_text_from_file(job_filepath)
+            
+            if not job_text:
+                flash('Could not extract text from job description', 'error')
+                return redirect(url_for('job_match'))
+            
+            # Extract skills from job description using your function
+            job_doc = nlp(job_text[:500000])  # Limit text length
+            job_skills_result = extract_skills_advanced(job_text[:500000], job_doc)
+            job_skills = job_skills_result.get('all_skills', [])
             
             # Clean up temp files
             try:
@@ -1322,51 +1339,105 @@ def job_match():
             except:
                 pass
             
-            if not resume_text or not job_text:
-                flash('Could not extract text from files', 'error')
-                return redirect(url_for('job_match'))
-            
-            # Extract skills
-            resume_skills_result = extract_skills_from_text(resume_text)
-            job_skills_result = extract_skills_from_text(job_text)
-            
-            resume_skills = resume_skills_result['all']
-            job_skills = job_skills_result['all']
-            
-            # Calculate match score
+            # ========== CALCULATE MATCH ==========
             if not job_skills:
-                match_score = 70
-                matched_skills = resume_skills[:5]
+                match_score = 0
+                match_level = "Insufficient Data"
+                matched_skills = []
                 missing_skills = []
+                recommendation = "Job description doesn't contain clear skill requirements. Please upload a more detailed job description."
+                skill_match = 0
             else:
-                resume_set = set([s.lower() for s in resume_skills])
-                job_set = set([s.lower() for s in job_skills])
+                # Convert to sets for comparison (case insensitive)
+                resume_set = set([s.lower().strip() for s in resume_skills])
+                job_set = set([s.lower().strip() for s in job_skills])
                 
-                matched = list(resume_set.intersection(job_set))
-                missing = list(job_set - resume_set)
+                # Find matches (ONLY skills that exist in BOTH documents)
+                matched_skills_raw = list(resume_set.intersection(job_set))
+                missing_skills_raw = list(job_set - resume_set)
                 
-                match_score = int((len(matched) / len(job_set)) * 100) if job_set else 70
-                match_score = min(98, max(30, match_score))
+                # Format skills nicely (capitalize first letter)
+                matched_skills = [s.title() for s in matched_skills_raw]
+                missing_skills = [s.title() for s in missing_skills_raw]
+                
+                # Calculate match percentage
+                if len(job_set) > 0:
+                    match_score = round((len(matched_skills_raw) / len(job_set)) * 100, 1)
+                    skill_match = match_score
+                else:
+                    match_score = 0
+                    skill_match = 0
+                
+                # Determine match level
+                if match_score >= 80:
+                    match_level = "Excellent"
+                    recommendation = f"Excellent match! You have {len(matched_skills_raw)} out of {len(job_set)} required skills. You're a strong candidate for this position."
+                elif match_score >= 60:
+                    match_level = "Good"
+                    recommendation = f"Good match! You have {len(matched_skills_raw)} out of {len(job_set)} required skills. Focus on developing: {', '.join(missing_skills[:5])}"
+                elif match_score >= 40:
+                    match_level = "Fair"
+                    recommendation = f"Fair match. You have {len(matched_skills_raw)} out of {len(job_set)} required skills. Consider upskilling in: {', '.join(missing_skills[:5])}"
+                else:
+                    match_level = "Needs Improvement"
+                    recommendation = f"Your skills don't align strongly with this role. You matched {len(matched_skills_raw)} out of {len(job_set)} required skills."
             
-            # Create match_results dictionary (what your template expects)
+            # Estimate required experience from job description
+            exp_years_job = len(re.findall(r'\b(19|20)\d{2}\b', job_text)) // 3
+            exp_years_job = min(max(exp_years_job, 2), 15)
+            
+            if resume_experience >= exp_years_job:
+                experience_match = 100
+            elif resume_experience > 0:
+                experience_match = round((resume_experience / exp_years_job) * 100)
+                experience_match = max(experience_match, 20)
+            else:
+                experience_match = 50
+            
+            # Get job title from filename
+            job_title = job_file.filename.replace('.pdf', '').replace('.docx', '').replace('.doc', '').replace('.txt', '')
+            job_title = job_title.replace('_', ' ').replace('-', ' ').title()
+            if not job_title or len(job_title) < 2:
+                job_title = "Job Position"
+            
+            # Create match results dictionary
             match_results = {
                 'overall_score': match_score,
-                'match_level': 'Excellent Match' if match_score >= 80 else 'Good Match' if match_score >= 60 else 'Fair Match' if match_score >= 40 else 'Needs Improvement',
-                'skill_match': match_score,
-                'experience_match': 80,  # Default value
-                'matched_skills': [s.title() for s in matched[:15]],
-                'missing_skills': [s.title() for s in missing[:15]],
-                'total_job_skills': len(job_set),
-                'total_resume_skills': len(resume_set),
-                'resume_experience': 3,  # Default value
-                'required_experience': 2  # Default value
+                'match_level': match_level,
+                'skill_match': skill_match,
+                'experience_match': experience_match,
+                'matched_skills': matched_skills[:20],
+                'missing_skills': missing_skills[:20],
+                'total_job_skills': len(job_skills),
+                'total_resume_skills': len(resume_skills),
+                'resume_experience': resume_experience,
+                'required_experience': exp_years_job,
+                'recommendation': recommendation
             }
             
+            # Store in database
+            db = get_db()
+            db.execute('''
+                INSERT INTO job_matches (user_id, job_title, match_score, matched_skills, missing_skills)
+                VALUES (?, ?, ?, ?, ?)
+            ''', (
+                session['user_id'],
+                job_title[:100],
+                match_score,
+                json.dumps(matched_skills[:20]),
+                json.dumps(missing_skills[:20])
+            ))
+            db.commit()
+            db.close()
+            
+            flash(f'Analysis complete! {match_score}% match score', 'success')
+            
+            # Render the results template
             return render_template('job_match_results.html',
                                  match_results=match_results,
-                                 job_title="Job Position",
-                                 resume_skills=resume_skills[:15],
-                                 job_skills=job_skills[:15])
+                                 job_title=job_title,
+                                 resume_skills=[s.title() for s in resume_skills[:30]],
+                                 job_skills=[s.title() for s in job_skills[:30]])
             
         except Exception as e:
             logger.error(f"Job match error: {e}")

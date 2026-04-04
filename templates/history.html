@@ -36,10 +36,21 @@
             border-radius: 8px;
             font-weight: 600;
             transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
         }
         .btn:hover {
             transform: translateY(-2px);
             box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+        .btn-success {
+            background: #28a745;
+            color: white;
         }
         .history-card {
             background: white;
@@ -64,11 +75,14 @@
             justify-content: space-between;
             align-items: center;
             margin-bottom: 15px;
+            flex-wrap: wrap;
+            gap: 10px;
         }
         .history-title {
             font-size: 1.2rem;
             font-weight: 600;
             color: #333;
+            word-break: break-all;
         }
         .history-date {
             color: #666;
@@ -107,6 +121,12 @@
             border-radius: 20px;
             font-size: 0.8rem;
         }
+        .button-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+            flex-wrap: wrap;
+        }
     </style>
 </head>
 <body>
@@ -136,16 +156,19 @@
                     
                     {% if upload.skills_parsed %}
                     <div class="skills-list">
-                        {% for skill in upload.skills_parsed %}
+                        {% for skill in upload.skills_parsed[:10] %}
                         <span class="skill-tag">{{ skill }}</span>
                         {% endfor %}
+                        {% if upload.skills_parsed|length > 10 %}
+                        <span class="skill-tag">+{{ upload.skills_parsed|length - 10 }} more</span>
+                        {% endif %}
                     </div>
                     {% endif %}
                     
                     {% if upload.roles_parsed %}
                     <div style="margin-top: 10px;">
                         <strong>Top Roles:</strong>
-                        {% for role, score in upload.roles_parsed %}
+                        {% for role, score in upload.roles_parsed[:3] %}
                         <span style="display: inline-block; background: #eef; padding: 3px 8px; border-radius: 5px; margin-left: 5px; font-size: 0.9rem;">
                             {{ role }} ({{ score }}%)
                         </span>
@@ -153,12 +176,12 @@
                     </div>
                     {% endif %}
                     
-                    <div style="margin-top: 15px; display: flex; gap: 10px;">
-                        <a href="{{ url_for('view_upload', upload_id=upload.id) }}" class="btn" style="padding: 8px 15px; font-size: 0.9rem;">
-                            <i class="fas fa-eye"></i> View
+                    <div class="button-group">
+                        <a href="{{ url_for('view_upload', upload_id=upload.id) }}" class="btn btn-primary">
+                            <i class="fas fa-eye"></i> View Details
                         </a>
-                        <a href="{{ url_for('reanalyze_upload', upload_id=upload.id) }}" class="btn" style="padding: 8px 15px; font-size: 0.9rem; background: #28a745;">
-                            <i class="fas fa-sync"></i> Re-analyze
+                        <a href="{{ url_for('dashboard') }}" class="btn btn-success">
+                            <i class="fas fa-upload"></i> Upload New
                         </a>
                     </div>
                 </div>

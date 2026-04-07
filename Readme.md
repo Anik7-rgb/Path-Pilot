@@ -2,7 +2,7 @@ Live Demo:https://pathpilot-production-188b.up.railway.app
 
 #  PathPilot 💼✨
 
-SkillSense is a web-based intelligent system that:
+PathPilot is a web-based intelligent system that:
 - Parses a user’s resume (PDF),
 - Extracts technical skills using NLP,
 - Predicts top career roles using ML,

@@ -1,6 +1,6 @@
 Live Demo:https://pathpilot-production-188b.up.railway.app
 
-# SkillSense: AI-Powered Career Recommendation System 💼✨
+#  PathPilot 💼✨
 
 SkillSense is a web-based intelligent system that:
 - Parses a user’s resume (PDF),
